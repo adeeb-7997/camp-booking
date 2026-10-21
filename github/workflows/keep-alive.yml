@@ -1,1 +1,58 @@
+# =====================================================================
+#  تنشيط قاعدة بيانات Supabase تلقائياً حتى لا يتوقف المشروع المجاني
+#  مكان الملف في المستودع:  .github/workflows/keep-alive.yml
+#
+#  يعمل تلقائياً: الأحد والأربعاء الساعة 6:17 صباحاً بتوقيت السعودية
+#  ويمكن تشغيله يدوياً من تبويب Actions > Run workflow
+# =====================================================================
 
+name: تنشيط قاعدة البيانات
+
+on:
+  schedule:
+    - cron: '17 3 * * 0,3'   # UTC = 6:17 صباحاً بتوقيت السعودية، الأحد والأربعاء
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  SUPABASE_URL: https://kkmbvgcpbpqnlyqtmzeo.supabase.co
+  SUPABASE_KEY: sb_publishable_0jJKMXVdvlZw1cMxXm9H-A_XWBsrlpl
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      # 1) تنشيط Supabase — إذا فشل تفشل المهمة ويصلك إيميل من GitHub
+      - name: تنشيط Supabase
+        run: |
+          for i in 1 2 3; do
+            if curl --fail-with-body -sS -X POST "$SUPABASE_URL/rest/v1/rpc/keep_alive" \
+                 -H "apikey: $SUPABASE_KEY" \
+                 -H "Content-Type: application/json" \
+                 -d '{"p_source":"github"}'; then
+              echo ""
+              echo "تم التنشيط ✅"
+              exit 0
+            fi
+            echo "محاولة $i فشلت، إعادة بعد 30 ثانية..."
+            sleep 30
+          done
+          echo "فشل التنشيط بعد 3 محاولات ❌"
+          exit 1
+
+      # 2) إبقاء المستودع نشطاً — GitHub يوقف المهام المجدولة
+      #    في المستودعات التي لا يحدث فيها أي تعديل لمدة 60 يوماً
+      - name: جلب المستودع
+        uses: actions/checkout@v4
+
+      - name: تسجيل آخر تشغيل في المستودع
+        run: |
+          mkdir -p .keepalive
+          TZ=Asia/Riyadh date '+%Y-%m-%d %H:%M' > .keepalive/last-run.txt
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .keepalive/last-run.txt
+          git commit -m "تنشيط تلقائي" || echo "لا تغيير"
+          git push
