@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#6b4f2c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>حجوزات المخيم</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#f6f1e9; --card:#fff; --ink:#2b2117; --muted:#8a7a68; --line:#e8dfd2;
+    --brand:#6b4f2c; --brand2:#8c6a3f; --brand-soft:#efe4d3;
+    --green:#2e7d4f; --green-bg:#e3f3e8;
+    --amber:#a36a00; --amber-bg:#fdf1d6;
+    --red:#b3261e; --red-bg:#fbe5e3;
+    --gray:#6b6b6b; --gray-bg:#ececec;
+    --blue:#1f5fa8; --blue-bg:#e3eefb;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'Tajawal',system-ui,sans-serif;font-size:16px}
+  button,input,select,textarea{font-family:inherit;font-size:16px}
+  [hidden]{display:none!important}
+
+  /* ---------- الدخول ---------- */
+  #login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .login-box{width:100%;max-width:380px;background:var(--card);border-radius:24px;padding:32px 24px;box-shadow:0 10px 30px rgba(60,40,10,.08)}
+  .login-box .logo{font-size:44px;text-align:center}
+  .login-box h1{text-align:center;margin:8px 0 24px;font-size:24px}
+
+  /* ---------- الهيكل ---------- */
+  header{position:sticky;top:0;z-index:10;background:var(--brand);color:#fff;display:flex;align-items:center;gap:8px;padding:12px 16px;padding-top:max(12px,env(safe-area-inset-top))}
+  header h1{flex:1;margin:0;font-size:19px;font-weight:700}
+  header button{background:rgba(255,255,255,.15);border:0;color:#fff;border-radius:10px;padding:8px 12px;cursor:pointer}
+  main{max-width:720px;margin:0 auto;padding:16px 16px 110px}
+  nav.bottom{position:fixed;bottom:0;left:0;right:0;z-index:10;background:var(--card);border-top:1px solid var(--line);display:flex;gap:10px;padding:10px 16px;padding-bottom:max(10px,env(safe-area-inset-bottom))}
+  nav.bottom button{flex:1;border:0;border-radius:14px;padding:13px;font-weight:700;cursor:pointer;background:var(--brand-soft);color:var(--brand)}
+  nav.bottom button.primary{background:var(--brand);color:#fff}
+
+  /* ---------- عناصر عامة ---------- */
+  .card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(60,40,10,.06)}
+  .muted{color:var(--muted);font-size:14px}
+  .row{display:flex;align-items:center;gap:8px}
+  .between{justify-content:space-between}
+  .wrap{flex-wrap:wrap}
+  .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:13px;font-weight:700;white-space:nowrap}
+  .b-green{background:var(--green-bg);color:var(--green)}
+  .b-amber{background:var(--amber-bg);color:var(--amber)}
+  .b-red{background:var(--red-bg);color:var(--red)}
+  .b-gray{background:var(--gray-bg);color:var(--gray)}
+  .b-blue{background:var(--blue-bg);color:var(--blue)}
+  .btn{border:0;border-radius:12px;padding:12px 16px;font-weight:700;cursor:pointer;background:var(--brand-soft);color:var(--brand);text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+  .btn.primary{background:var(--brand);color:#fff}
+  .btn.green{background:var(--green);color:#fff}
+  .btn.wa{background:#25d366;color:#fff}
+  .btn.danger{background:var(--red-bg);color:var(--red)}
+  .btn.block{width:100%}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  label{display:block;font-size:14px;font-weight:700;margin:14px 0 6px}
+  input,select,textarea{width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);outline:none}
+  input:focus,select:focus,textarea:focus{border-color:var(--brand2)}
+  textarea{min-height:70px;resize:vertical}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .grid2 label{margin-top:14px}
+  .ltr{direction:ltr;text-align:right}
+
+  /* ---------- القائمة ---------- */
+  .search{margin-bottom:10px}
+  .chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:10px;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:none;border:1.5px solid var(--line);background:var(--card);border-radius:999px;padding:7px 14px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer}
+  .chip.on{background:var(--brand);border-color:var(--brand);color:#fff}
+  .summary{display:flex;gap:10px;margin-bottom:12px}
+  .summary .card{flex:1;margin:0;text-align:center;padding:12px}
+  .summary b{display:block;font-size:20px}
+  .item{cursor:pointer}
+  .item h3{margin:0;font-size:17px}
+  .item .dates{margin:8px 0 6px;font-size:15px}
+  .empty{text-align:center;padding:40px 10px;color:var(--muted)}
+
+  /* ---------- النموذج ---------- */
+  .price-box{margin-top:14px;border-radius:12px;background:var(--bg);padding:12px}
+  .pday{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--line);font-size:15px}
+  .pday:last-child{border:0}
+  .ptotal{display:flex;justify-content:space-between;font-weight:800;margin-top:8px;font-size:17px}
+  .conflict{background:var(--red-bg);color:var(--red);border-radius:12px;padding:12px;margin-top:12px;font-weight:700}
+
+  /* ---------- البطاقة ---------- */
+  .money{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+  .money div{background:var(--bg);border-radius:12px;padding:10px 4px}
+  .money b{display:block;font-size:17px;margin-top:2px}
+  .sec-title{font-weight:800;margin:0 0 10px;font-size:16px}
+  .pay{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)}
+  .pay:last-child{border:0}
+  .x{border:0;background:var(--red-bg);color:var(--red);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:18px}
+  .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .phone-link{color:var(--blue);text-decoration:none;font-weight:700;direction:ltr;display:inline-block}
+
+  /* ---------- تنبيه ---------- */
+  #toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;opacity:0;pointer-events:none;transition:.25s;z-index:50;max-width:90vw;text-align:center}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  #toast.err{background:var(--red)}
+  .loading{text-align:center;padding:30px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<!-- ======================= الدخول ======================= -->
+<div id="login" hidden>
+  <form class="login-box" id="loginForm">
+    <div class="logo">⛺</div>
+    <h1>حجوزات المخيم</h1>
+    <label>الإيميل</label>
+    <input type="email" id="lEmail" class="ltr" autocomplete="username" required>
+    <label>كلمة المرور</label>
+    <input type="password" id="lPass" class="ltr" autocomplete="current-password" required>
+    <button class="btn primary block" style="margin-top:22px" id="lBtn">دخول</button>
+  </form>
+</div>
+
+<!-- ======================= التطبيق ======================= -->
+<div id="app" hidden>
+  <header>
+    <button id="backBtn" hidden>→</button>
+    <h1 id="title">الحجوزات</h1>
+    <button id="logoutBtn">خروج</button>
+  </header>
+
+  <main>
+    <!-- القائمة -->
+    <section id="vList">
+      <input class="search" id="search" type="search" placeholder="بحث بالاسم أو الجوال أو رقم الحجز">
+      <div class="chips" id="chips"></div>
+      <div class="summary" id="summary"></div>
+      <div id="list"></div>
+    </section>
+
+    <!-- النموذج -->
+    <section id="vForm" hidden>
+      <form id="bForm" class="card" novalidate>
+        <label>اسم المستأجر</label>
+        <input id="fName" required>
+
+        <label>رقم الجوال</label>
+        <input id="fPhone" class="ltr" inputmode="tel" placeholder="05xxxxxxxx">
+
+        <div class="grid2">
+          <div><label>أول يوم</label><input type="date" id="fStart"></div>
+          <div><label>آخر يوم</label><input type="date" id="fEnd"></div>
+        </div>
+
+        <div id="priceBox" class="price-box"></div>
+
+        <div class="grid2">
+          <div><label>المبلغ المتفق عليه</label><input id="fAgreed" inputmode="numeric" class="ltr"></div>
+          <div><label>مبلغ التأمين</label><input id="fDeposit" inputmode="numeric" class="ltr"></div>
+        </div>
+
+        <div class="grid2">
+          <div>
+            <label>حالة الحجز</label>
+            <select id="fStatus">
+              <option value="tentative">مبدئي</option>
+              <option value="confirmed">مؤكد</option>
+              <option value="completed">منتهي</option>
+              <option value="cancelled">ملغي</option>
+            </select>
+          </div>
+          <div><label>نوع المناسبة</label><input id="fOccasion" placeholder="عائلي، شباب..."></div>
+        </div>
+
+        <label>ملاحظات</label>
+        <textarea id="fNotes"></textarea>
+
+        <button class="btn primary block" style="margin-top:20px" id="saveBtn">حفظ الحجز</button>
+      </form>
+    </section>
+
+    <!-- بطاقة الحجز -->
+    <section id="vCard" hidden></section>
+  </main>
+
+  <nav class="bottom" id="nav">
+    <button data-go="list">📋 الحجوزات</button>
+    <button data-go="new" class="primary">＋ حجز جديد</button>
+  </nav>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* =====================================================================
+   الإعداد
+   ===================================================================== */
+const SUPABASE_URL = 'https://kkmbvgcpbpqnlyqtmzeo.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_0jJKMXVdvlZw1cMxXm9H-A_XWBsrlpl';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const S = {
+  settings: null, bookings: [], filter: 'upcoming', search: '',
+  view: 'list', currentId: null, editId: null,
+  expected: 0, conflict: false, agreedTouched: false, priceToken: 0
+};
+
+const STATUS  = { tentative:['مبدئي','b-amber'], confirmed:['مؤكد','b-green'], completed:['منتهي','b-gray'], cancelled:['ملغي','b-red'] };
+const PAY     = { unpaid:['لم يدفع','b-red'], partial:['دفع جزء','b-amber'], paid:['مسدد','b-green'] };
+const DEP     = { not_collected:'لم يُحصّل', collected:'محصّل', refunded:'مسترد', deducted:'مخصوم منه' };
+const DAYTYPE = { weekday:'عادي', weekend:'ويكند', holiday:'إجازة' };
+const FILTERS = [
+  ['upcoming','القادمة'], ['remaining','عليه متبقي'], ['tentative','مبدئي'],
+  ['confirmed','مؤكد'], ['completed','منتهي'], ['cancelled','ملغي'], ['all','الكل']
+];
+
+/* =====================================================================
+   أدوات
+   ===================================================================== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const toLatin = s => String(s ?? '').replace(/[٠-٩]/g, d => d.charCodeAt(0) - 1632).replace(/[۰-۹]/g, d => d.charCodeAt(0) - 1776);
+const num = s => Number(toLatin(s).replace(/[^\d.]/g, '')) || 0;
+const money = n => Number(n || 0).toLocaleString('en-US') + ' ريال';
+const parseD = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
+const fmtWeekday = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-latn', { weekday:'long' });
+const fmtDate = s => { const d = parseD(s); return `${fmtWeekday.format(d)} ${d.getDate()}/${d.getMonth()+1}`; };
+const fmtDateY = s => { const d = parseD(s); return `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`; };
+const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+const find = id => S.bookings.find(b => b.id === id);
+
+function normPhone(s){
+  s = toLatin(s).replace(/[^\d+]/g, '');
+  if (s.startsWith('+966')) s = '0' + s.slice(4);
+  else if (s.startsWith('00966')) s = '0' + s.slice(5);
+  else if (s.startsWith('966')) s = '0' + s.slice(3);
+  else if (s.startsWith('5') && s.length === 9) s = '0' + s;
+  return s;
+}
+const waLink = phone => 'https://wa.me/966' + phone.slice(1);
+
+let toastTimer;
+function toast(msg, err=false){
+  const t = $('#toast');
+  t.textContent = msg; t.className = 'show' + (err ? ' err' : '');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.className = '', 3200);
+}
+
+/* =====================================================================
+   الدخول والخروج
+   ===================================================================== */
+async function init(){
+  const { data:{ session } } = await sb.auth.getSession();
+  if (session) startApp(); else $('#login').hidden = false;
+}
+
+$('#loginForm').onsubmit = async e => {
+  e.preventDefault();
+  const btn = $('#lBtn'); btn.disabled = true; btn.textContent = 'جاري الدخول...';
+  const { error } = await sb.auth.signInWithPassword({
+    email: $('#lEmail').value.trim(), password: $('#lPass').value
+  });
+  btn.disabled = false; btn.textContent = 'دخول';
+  if (error) return toast('الإيميل أو كلمة المرور غير صحيحة', true);
+  $('#login').hidden = true;
+  startApp();
+};
+
+$('#logoutBtn').onclick = async () => {
+  if (!confirm('تسجيل الخروج؟')) return;
+  await sb.auth.signOut();
+  location.reload();
+};
+
+async function startApp(){
+  $('#app').hidden = false;
+  $('#list').innerHTML = '<div class="loading">جاري التحميل...</div>';
+  sb.rpc('keep_alive', { p_source:'app' });   // تنشيط إضافي مع كل فتح
+  const ok = await loadAll();
+  if (ok) go('list');
+}
+
+async function loadAll(){
+  const [s, b] = await Promise.all([
+    sb.from('settings').select('*').eq('id', 1).maybeSingle(),
+    sb.from('bookings_view').select('*').order('start_date')
+  ]);
+  if (s.error || b.error || !s.data){
+    $('#list').innerHTML = '<div class="empty">⚠️ لا توجد صلاحية لهذا الحساب.<br>تأكد أن الإيميل في دالة is_owner مطابق لإيميل الدخول.</div>';
+    return false;
+  }
+  S.settings = s.data;
+  S.bookings = b.data || [];
+  return true;
+}
+
+/* =====================================================================
+   التنقل
+   ===================================================================== */
+function go(view){
+  S.view = view;
+  $('#vList').hidden = view !== 'list';
+  $('#vForm').hidden = view !== 'form';
+  $('#vCard').hidden = view !== 'card';
+  $('#backBtn').hidden = view === 'list';
+  $('#nav').hidden = view === 'form';
+  $('#title').textContent = view === 'list' ? 'الحجوزات' : view === 'form' ? (S.editId ? 'تعديل الحجز' : 'حجز جديد') : 'تفاصيل الحجز';
+  if (view === 'list') renderList();
+  window.scrollTo(0, 0);
+}
+
+$('#backBtn').onclick = () => {
+  if (S.view === 'form' && S.editId) openCard(S.editId);
+  else go('list');
+};
+
+document.querySelectorAll('#nav button').forEach(b => b.onclick = () => {
+  if (b.dataset.go === 'new') openForm(null); else go('list');
+});
+
+/* =====================================================================
+   القائمة
+   ===================================================================== */
+$('#chips').innerHTML = FILTERS.map(([k,l]) => `<button class="chip" data-f="${k}">${l}</button>`).join('');
+$('#chips').onclick = e => {
+  const c = e.target.closest('.chip'); if (!c) return;
+  S.filter = c.dataset.f; renderList();
+};
+$('#search').oninput = e => { S.search = e.target.value; renderList(); };
+
+function renderList(){
+  document.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.f === S.filter));
+  const t = todayStr();
+  const q = toLatin(S.search).trim();
+
+  let arr = S.bookings.filter(b => {
+    switch (S.filter){
+      case 'upcoming':  return b.status !== 'cancelled' && b.end_date >= t;
+      case 'remaining': return b.status !== 'cancelled' && Number(b.remaining) > 0;
+      case 'all':       return true;
+      default:          return b.status === S.filter;
+    }
+  });
+  if (q) arr = arr.filter(b => b.renter_name.includes(q) || b.phone.includes(q) || (b.booking_no || '').includes(q));
+  if (S.filter !== 'upcoming') arr = [...arr].sort((a,b) => b.start_date.localeCompare(a.start_date));
+
+  const totalRemaining = arr.filter(b => b.status !== 'cancelled').reduce((s,b) => s + Math.max(0, Number(b.remaining)), 0);
+  $('#summary').innerHTML = `
+    <div class="card"><span class="muted">عدد الحجوزات</span><b>${arr.length}</b></div>
+    <div class="card"><span class="muted">المتبقي على المستأجرين</span><b>${money(totalRemaining)}</b></div>`;
+
+  if (!arr.length){
+    $('#list').innerHTML = '<div class="empty">لا توجد حجوزات هنا</div>';
+    return;
+  }
+
+  $('#list').innerHTML = arr.map(b => {
+    const st = STATUS[b.status], py = PAY[b.payment_status];
+    return `
+    <div class="card item" data-id="${b.id}">
+      <div class="row between">
+        <h3>${esc(b.renter_name)}</h3>
+        <span class="badge ${st[1]}">${st[0]}</span>
+      </div>
+      <div class="dates">📅 ${fmtDate(b.start_date)} ← ${fmtDate(b.end_date)} <span class="muted">(${b.days} ${b.days > 2 && b.days < 11 ? 'أيام' : 'يوم'})</span></div>
+      <div class="row between wrap">
+        <span class="muted">${esc(b.booking_no)}</span>
+        <span class="row">
+          ${b.status !== 'cancelled' && Number(b.remaining) > 0 ? `<span class="muted">متبقي ${money(b.remaining)}</span>` : ''}
+          <span class="badge ${py[1]}">${py[0]}</span>
+        </span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+$('#list').onclick = e => {
+  const it = e.target.closest('.item'); if (it) openCard(Number(it.dataset.id));
+};
+
+/* =====================================================================
+   نموذج الحجز
+   ===================================================================== */
+function openForm(id){
+  S.editId = id;
+  const b = id ? find(id) : null;
+  $('#fName').value     = b ? b.renter_name : '';
+  $('#fPhone').value    = b ? b.phone : '';
+  $('#fStart').value    = b ? b.start_date : '';
+  $('#fEnd').value      = b ? b.end_date : '';
+  $('#fAgreed').value   = b ? b.agreed_total : '';
+  $('#fDeposit').value  = b ? b.deposit_amount : (S.settings?.default_deposit ?? 0);
+  $('#fStatus').value   = b ? b.status : 'tentative';
+  $('#fOccasion').value = b ? (b.occasion || '') : '';
+  $('#fNotes').value    = b ? (b.notes || '') : '';
+  // عند التعديل: إذا كان فيه خصم سابق نحافظ على المبلغ المتفق عليه
+  S.agreedTouched = b ? Number(b.agreed_total) !== Number(b.expected_total) : false;
+  go('form');
+  updatePricing();
+}
+
+$('#fStart').onchange = () => {
+  if (!$('#fEnd').value || $('#fEnd').value < $('#fStart').value) $('#fEnd').value = $('#fStart').value;
+  updatePricing();
+};
+$('#fEnd').onchange = updatePricing;
+$('#fAgreed').oninput = () => { S.agreedTouched = true; };
+
+async function updatePricing(){
+  const s = $('#fStart').value, e = $('#fEnd').value, box = $('#priceBox');
+  S.conflict = false;
+  if (!s || !e){ box.innerHTML = '<div class="muted">اختر التاريخين لعرض تفصيل السعر</div>'; return; }
+  if (e < s){ S.conflict = true; box.innerHTML = '<div class="conflict">آخر يوم قبل أول يوم!</div>'; return; }
+
+  box.innerHTML = '<div class="muted">جاري الحساب...</div>';
+  const token = ++S.priceToken;
+  const [br, cf] = await Promise.all([
+    sb.rpc('price_breakdown', { p_start:s, p_end:e }),
+    sb.rpc('check_conflict',  { p_start:s, p_end:e, p_exclude_id:S.editId })
+  ]);
+  if (token !== S.priceToken) return;   // تجاهل رد قديم
+  if (br.error || cf.error){ box.innerHTML = '<div class="conflict">تعذر الحساب، تحقق من الاتصال</div>'; return; }
+
+  const days = br.data || [];
+  S.expected = days.reduce((sum, d) => sum + Number(d.price || 0), 0);
+  if (!S.agreedTouched) $('#fAgreed').value = S.expected;
+
+  let html = days.map(d => {
+    const cls = d.day_type === 'holiday' ? 'b-amber' : d.day_type === 'weekend' ? 'b-blue' : 'b-gray';
+    const lbl = d.day_type === 'holiday' ? esc(d.holiday_name) : DAYTYPE[d.day_type];
+    return `<div class="pday"><span>${fmtDate(d.day)} <span class="badge ${cls}">${lbl}</span></span><span>${money(d.price)}</span></div>`;
+  }).join('');
+  html += `<div class="ptotal"><span>المجموع المتوقع (${days.length} ${days.length > 2 && days.length < 11 ? 'أيام' : 'يوم'})</span><span>${money(S.expected)}</span></div>`;
+
+  if (cf.data && cf.data.length){
+    S.conflict = true;
+    html += cf.data.map(c => `<div class="conflict">⛔ محجوز لـ ${esc(c.renter_name)} من ${fmtDate(c.start_date)} إلى ${fmtDate(c.end_date)} (${esc(c.booking_no)})</div>`).join('');
+  }
+  box.innerHTML = html;
+}
+
+$('#bForm').onsubmit = async e => {
+  e.preventDefault();
+  const rec = {
+    renter_name:    $('#fName').value.trim(),
+    phone:          normPhone($('#fPhone').value),
+    start_date:     $('#fStart').value,
+    end_date:       $('#fEnd').value,
+    agreed_total:   num($('#fAgreed').value),
+    deposit_amount: num($('#fDeposit').value),
+    status:         $('#fStatus').value,
+    occasion:       $('#fOccasion').value.trim(),
+    notes:          $('#fNotes').value.trim()
+  };
+
+  if (!rec.renter_name)                    return toast('اكتب اسم المستأجر', true);
+  if (!/^05\d{8}$/.test(rec.phone))        return toast('رقم الجوال يجب أن يكون 05 ثم 8 أرقام', true);
+  if (!rec.start_date || !rec.end_date)    return toast('اختر أول يوم وآخر يوم', true);
+  if (rec.end_date < rec.start_date)       return toast('آخر يوم قبل أول يوم', true);
+  if (S.conflict && rec.status !== 'cancelled') return toast('الأيام محجوزة لحجز آخر', true);
+
+  const btn = $('#saveBtn'); btn.disabled = true; btn.textContent = 'جاري الحفظ...';
+  const q = S.editId
+    ? sb.from('bookings').update(rec).eq('id', S.editId).select().single()
+    : sb.from('bookings').insert(rec).select().single();
+  const { data, error } = await q;
+  btn.disabled = false; btn.textContent = 'حفظ الحجز';
+
+  if (error){
+    if (error.code === '23P01') { toast('هذه الأيام محجوزة لحجز آخر', true); updatePricing(); }
+    else if (error.code === '23514') toast('تحقق من رقم الجوال والتواريخ', true);
+    else toast('خطأ: ' + error.message, true);
+    return;
+  }
+  await loadAll();
+  toast('تم حفظ الحجز ✅');
+  openCard(data.id);
+};
+
+/* =====================================================================
+   بطاقة الحجز
+   ===================================================================== */
+async function openCard(id){
+  S.currentId = id;
+  S.editId = null;
+  go('card');
+  $('#vCard').innerHTML = '<div class="loading">جاري التحميل...</div>';
+  const { data: pays, error } = await sb.from('payments').select('*').eq('booking_id', id).order('paid_on').order('id');
+  if (error) return toast('تعذر تحميل الدفعات', true);
+  renderCard(find(id), pays || []);
+}
+
+function renderCard(b, pays){
+  if (!b){ go('list'); return; }
+  const st = STATUS[b.status], py = PAY[b.payment_status];
+  const discount = Number(b.discount);
+
+  const payRows = pays.length
+    ? pays.map(p => `
+      <div class="pay">
+        <div><b>${money(p.amount)}</b><div class="muted">${fmtDateY(p.paid_on)} — ${p.method === 'cash' ? 'نقد' : 'تحويل'}${p.note ? ' — ' + esc(p.note) : ''}</div></div>
+        <button class="x" data-del-pay="${p.id}" title="حذف">×</button>
+      </div>`).join('')
+    : '<div class="muted">لا توجد دفعات بعد</div>';
+
+  let actions = '';
+  if (b.status === 'tentative') actions += `<button class="btn green" data-status="confirmed">✅ تأكيد الحجز</button>`;
+  if (b.status === 'confirmed') actions += `<button class="btn" data-status="completed">🏁 إنهاء (تم الخروج)</button>`;
+  if (b.status === 'cancelled') actions += `<button class="btn" data-status="tentative">↩️ استرجاع الحجز</button>`;
+  else actions += `<button class="btn danger" data-status="cancelled">إلغاء الحجز</button>`;
+  actions += `<button class="btn" id="editBtn">✏️ تعديل</button>`;
+  actions += `<button class="btn danger" id="delBtn">🗑️ حذف نهائي</button>`;
+
+  $('#vCard').innerHTML = `
+    <div class="card">
+      <div class="row between">
+        <h2 style="margin:0;font-size:21px">${esc(b.renter_name)}</h2>
+        <span class="badge ${st[1]}">${st[0]}</span>
+      </div>
+      <div class="muted" style="margin-top:4px">${esc(b.booking_no)}${b.occasion ? ' — ' + esc(b.occasion) : ''}</div>
+      <div style="margin:14px 0 4px;font-size:16px">📅 ${fmtDate(b.start_date)} ← ${fmtDate(b.end_date)} <span class="muted">(${b.days} ${b.days > 2 && b.days < 11 ? 'أيام' : 'يوم'})</span></div>
+      <div class="row between" style="margin-top:12px">
+        <a class="phone-link" href="tel:${b.phone}">📞 ${b.phone}</a>
+        <a class="btn wa" href="${waLink(b.phone)}" target="_blank" rel="noopener">واتساب</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row between" style="margin-bottom:10px">
+        <p class="sec-title" style="margin:0">المبالغ</p>
+        <span class="badge ${py[1]}">${py[0]}</span>
+      </div>
+      <div class="money">
+        <div><span class="muted">المتفق عليه</span><b>${money(b.agreed_total)}</b></div>
+        <div><span class="muted">المدفوع</span><b style="color:var(--green)">${money(b.paid)}</b></div>
+        <div><span class="muted">المتبقي</span><b style="color:${Number(b.remaining) > 0 ? 'var(--red)' : 'var(--green)'}">${money(b.remaining)}</b></div>
+      </div>
+      ${discount > 0 ? `<div class="muted" style="margin-top:8px">السعر المتوقع ${money(b.expected_total)} — خصم ${money(discount)}</div>` : ''}
+    </div>
+
+    <div class="card">
+      <p class="sec-title">الدفعات</p>
+      ${payRows}
+      <form id="payForm" style="margin-top:12px">
+        <div class="grid2">
+          <div><label>المبلغ</label><input id="pAmount" inputmode="numeric" class="ltr"></div>
+          <div><label>التاريخ</label><input type="date" id="pDate" value="${todayStr()}"></div>
+        </div>
+        <div class="grid2">
+          <div><label>الطريقة</label><select id="pMethod"><option value="cash">نقد</option><option value="transfer">تحويل</option></select></div>
+          <div><label>ملاحظة</label><input id="pNote"></div>
+        </div>
+        <div class="grid2" style="margin-top:12px">
+          ${Number(b.remaining) > 0 ? `<button type="button" class="btn" id="fillRemaining">سداد المتبقي</button>` : '<span></span>'}
+          <button class="btn primary">＋ إضافة دفعة</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <p class="sec-title">التأمين — ${money(b.deposit_amount)}</p>
+      <label>الحالة</label>
+      <select id="dStatus">
+        ${Object.entries(DEP).map(([k,l]) => `<option value="${k}" ${b.deposit_status === k ? 'selected' : ''}>${l}</option>`).join('')}
+      </select>
+      <div id="dDeduct" ${b.deposit_status === 'deducted' ? '' : 'hidden'}>
+        <div class="grid2">
+          <div><label>المبلغ المخصوم</label><input id="dAmount" inputmode="numeric" class="ltr" value="${b.deposit_deducted || ''}"></div>
+          <div><label>سبب الخصم</label><input id="dReason" value="${esc(b.deduction_reason)}"></div>
+        </div>
+      </div>
+      <button class="btn block" style="margin-top:12px" id="dSave">حفظ حالة التأمين</button>
+    </div>
+
+    ${b.notes ? `<div class="card"><p class="sec-title">ملاحظات</p><div style="white-space:pre-wrap">${esc(b.notes)}</div></div>` : ''}
+
+    <div class="actions">${actions}</div>
+  `;
+  bindCard(b);
+}
+
+function bindCard(b){
+  // إضافة دفعة
+  const fill = $('#fillRemaining');
+  if (fill) fill.onclick = () => { $('#pAmount').value = Number(b.remaining); };
+
+  $('#payForm').onsubmit = async e => {
+    e.preventDefault();
+    const amount = num($('#pAmount').value);
+    if (amount <= 0) return toast('اكتب مبلغ الدفعة', true);
+    const { error } = await sb.from('payments').insert({
+      booking_id: b.id, amount, paid_on: $('#pDate').value || todayStr(),
+      method: $('#pMethod').value, note: $('#pNote').value.trim()
+    });
+    if (error) return toast('خطأ: ' + error.message, true);
+    await loadAll(); toast('تمت إضافة الدفعة ✅'); openCard(b.id);
+  };
+
+  // حذف دفعة
+  $('#vCard').querySelectorAll('[data-del-pay]').forEach(btn => btn.onclick = async () => {
+    if (!confirm('حذف هذه الدفعة؟')) return;
+    const { error } = await sb.from('payments').delete().eq('id', Number(btn.dataset.delPay));
+    if (error) return toast('خطأ: ' + error.message, true);
+    await loadAll(); toast('تم حذف الدفعة'); openCard(b.id);
+  });
+
+  // التأمين
+  $('#dStatus').onchange = () => { $('#dDeduct').hidden = $('#dStatus').value !== 'deducted'; };
+  $('#dSave').onclick = async () => {
+    const status = $('#dStatus').value;
+    const rec = {
+      deposit_status: status,
+      deposit_deducted: status === 'deducted' ? num($('#dAmount').value) : 0,
+      deduction_reason: status === 'deducted' ? $('#dReason').value.trim() : ''
+    };
+    if (status === 'deducted' && rec.deposit_deducted > Number(b.deposit_amount))
+      return toast('المبلغ المخصوم أكبر من التأمين', true);
+    const { error } = await sb.from('bookings').update(rec).eq('id', b.id);
+    if (error) return toast('خطأ: ' + error.message, true);
+    await loadAll(); toast('تم حفظ حالة التأمين ✅'); openCard(b.id);
+  };
+
+  // تغيير حالة الحجز
+  $('#vCard').querySelectorAll('[data-status]').forEach(btn => btn.onclick = async () => {
+    const ns = btn.dataset.status;
+    const msg = { confirmed:'تأكيد الحجز؟', completed:'تسجيل انتهاء الحجز؟', cancelled:'إلغاء الحجز؟ ستصبح أيامه متاحة لحجز آخر', tentative:'استرجاع الحجز كمبدئي؟' }[ns];
+    if (!confirm(msg)) return;
+    const { error } = await sb.from('bookings').update({ status: ns }).eq('id', b.id);
+    if (error){
+      if (error.code === '23P01') return toast('لا يمكن الاسترجاع: الأيام حُجزت لحجز آخر', true);
+      return toast('خطأ: ' + error.message, true);
+    }
+    await loadAll();
+    toast(ns === 'confirmed' ? 'تم تأكيد الحجز ✅' : 'تم التحديث ✅');
+    openCard(b.id);
+  });
+
+  // تعديل
+  $('#editBtn').onclick = () => openForm(b.id);
+
+  // حذف نهائي
+  $('#delBtn').onclick = async () => {
+    if (!confirm(`حذف حجز ${b.renter_name} نهائياً مع كل دفعاته؟\nلا يمكن التراجع.`)) return;
+    const { error } = await sb.from('bookings').delete().eq('id', b.id);
+    if (error) return toast('خطأ: ' + error.message, true);
+    await loadAll(); toast('تم حذف الحجز'); go('list');
+  };
+}
+
+init();
+</script>
+</body>
+</html>
