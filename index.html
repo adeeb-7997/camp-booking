@@ -37,8 +37,33 @@
   header button{background:rgba(255,255,255,.15);border:0;color:#fff;border-radius:10px;padding:8px 12px;cursor:pointer}
   main{max-width:720px;margin:0 auto;padding:16px 16px 110px}
   nav.bottom{position:fixed;bottom:0;left:0;right:0;z-index:10;background:var(--card);border-top:1px solid var(--line);display:flex;gap:10px;padding:10px 16px;padding-bottom:max(10px,env(safe-area-inset-bottom))}
-  nav.bottom button{flex:1;border:0;border-radius:14px;padding:13px;font-weight:700;cursor:pointer;background:var(--brand-soft);color:var(--brand)}
+  nav.bottom button{flex:1;border:0;border-radius:14px;padding:13px 6px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)}
+  nav.bottom button.on{background:var(--brand-soft);color:var(--brand)}
   nav.bottom button.primary{background:var(--brand);color:#fff}
+
+  /* ---------- التقويم ---------- */
+  .cal-head{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+  .cal-head h2{flex:1;text-align:center;margin:0;font-size:20px}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .cal-dow{text-align:center;font-size:12px;color:var(--muted);font-weight:700;padding:4px 0}
+  .cday{min-height:70px;border-radius:10px;background:#fff;padding:5px 2px;display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer;border:2px solid transparent;overflow:hidden;min-width:0}
+  .cday .n{font-weight:800;font-size:15px}
+  .cday .p{font-size:10px;color:var(--muted);direction:ltr}
+  .cday .nm{font-size:10px;font-weight:700;width:100%;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4}
+  .cday.weekend{background:var(--blue-bg)}
+  .cday.holiday{background:#fbe0a6}
+  .cday.holiday .nm{color:var(--amber)}
+  .cday.bk-tentative{background:var(--amber);color:#fff}
+  .cday.bk-confirmed{background:var(--green);color:#fff}
+  .cday.bk-completed{background:#9a9a9a;color:#fff}
+  .cday[class*="bk-"] .p{color:rgba(255,255,255,.85)}
+  .cday[class*="bk-"] .nm{color:#fff}
+  .cday.today{border-color:var(--brand)}
+  .cday.past{opacity:.5}
+  .cday.blank{background:transparent;cursor:default}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;margin-top:14px;font-size:13px;color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .legend i{width:14px;height:14px;border-radius:4px;display:inline-block}
 
   /* ---------- عناصر عامة ---------- */
   .card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(60,40,10,.06)}
@@ -166,6 +191,29 @@
       <div id="list"></div>
     </section>
 
+    <!-- التقويم -->
+    <section id="vCal" hidden>
+      <div class="cal-head">
+        <button class="btn small" id="calPrev" title="الشهر السابق">→</button>
+        <h2 id="calTitle"></h2>
+        <button class="btn small" id="calNext" title="الشهر التالي">←</button>
+      </div>
+      <div class="row" style="justify-content:center;margin:-4px 0 12px">
+        <button class="btn small" id="calToday">الشهر الحالي</button>
+      </div>
+      <div class="summary" id="calSum"></div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="legend">
+        <span><i style="background:#fff;border:1px solid var(--line)"></i>عادي</span>
+        <span><i style="background:var(--blue-bg)"></i>ويكند</span>
+        <span><i style="background:#fbe0a6"></i>إجازة</span>
+        <span><i style="background:var(--amber)"></i>مبدئي</span>
+        <span><i style="background:var(--green)"></i>مؤكد</span>
+        <span><i style="background:#9a9a9a"></i>منتهي</span>
+      </div>
+      <div class="muted" style="text-align:center;margin-top:10px">اضغط يوماً فاضياً لحجزه، أو يوماً محجوزاً لفتح الحجز</div>
+    </section>
+
     <!-- النموذج -->
     <section id="vForm" hidden>
       <form id="bForm" class="card" novalidate>
@@ -228,7 +276,8 @@
 
   <nav class="bottom" id="nav">
     <button data-go="list">📋 الحجوزات</button>
-    <button data-go="new" class="primary">＋ حجز جديد</button>
+    <button data-go="cal">📅 التقويم</button>
+    <button data-go="new" class="primary">＋ حجز</button>
   </nav>
 </div>
 
@@ -389,26 +438,106 @@ async function loadAll(){
 /* =====================================================================
    التنقل
    ===================================================================== */
+S.home = 'list';   // الصفحة الرئيسية الحالية (القائمة أو التقويم) للرجوع إليها
+
 function go(view){
   S.view = view;
+  if (view === 'list' || view === 'cal') S.home = view;
   $('#vList').hidden = view !== 'list';
+  $('#vCal').hidden  = view !== 'cal';
   $('#vForm').hidden = view !== 'form';
   $('#vCard').hidden = view !== 'card';
-  $('#backBtn').hidden = view === 'list';
+  $('#backBtn').hidden = view === 'list' || view === 'cal';
   $('#nav').hidden = view === 'form';
-  $('#title').textContent = view === 'list' ? 'الحجوزات' : view === 'form' ? (S.editId ? 'تعديل الحجز' : 'حجز جديد') : 'تفاصيل الحجز';
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.go === view));
+  $('#title').textContent = { list:'الحجوزات', cal:'التقويم', form:(S.editId ? 'تعديل الحجز' : 'حجز جديد'), card:'تفاصيل الحجز' }[view];
   if (view === 'list') renderList();
+  if (view === 'cal') renderCal();
   window.scrollTo(0, 0);
 }
 
 $('#backBtn').onclick = () => {
   if (S.view === 'form' && S.editId) openCard(S.editId);
-  else go('list');
+  else go(S.home);
 };
 
 document.querySelectorAll('#nav button').forEach(b => b.onclick = () => {
-  if (b.dataset.go === 'new') openForm(null); else go('list');
+  if (b.dataset.go === 'new') openForm(null); else go(b.dataset.go);
 });
+
+/* =====================================================================
+   التقويم الشهري
+   ===================================================================== */
+{ const d = new Date(); S.calY = d.getFullYear(); S.calM = d.getMonth() + 1; }
+S.calToken = 0;
+const fmtMonth = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-latn', { month:'long', year:'numeric' });
+const DOWS = ['سبت','أحد','إثنين','ثلاثاء','أربعاء','خميس','جمعة'];   // الأسبوع يبدأ السبت
+
+function shiftMonth(n){
+  let m = S.calM + n, y = S.calY;
+  if (m < 1){ m = 12; y--; } else if (m > 12){ m = 1; y++; }
+  S.calM = m; S.calY = y; renderCal();
+}
+$('#calPrev').onclick  = () => shiftMonth(-1);
+$('#calNext').onclick  = () => shiftMonth(1);
+$('#calToday').onclick = () => { const d = new Date(); S.calY = d.getFullYear(); S.calM = d.getMonth() + 1; renderCal(); };
+
+async function renderCal(){
+  const y = S.calY, m = S.calM;
+  $('#calTitle').textContent = fmtMonth.format(new Date(y, m - 1, 1));
+  $('#calGrid').innerHTML = '<div class="loading" style="grid-column:1/-1">جاري التحميل...</div>';
+  const tok = ++S.calToken;
+  const { data, error } = await sb.rpc('calendar_month', { p_year:y, p_month:m });
+  if (tok !== S.calToken) return;
+  if (error || !data){ $('#calGrid').innerHTML = '<div class="empty" style="grid-column:1/-1">تعذر تحميل التقويم</div>'; return; }
+
+  const t = todayStr();
+  let html = DOWS.map(d => `<div class="cal-dow">${d}</div>`).join('');
+  const offset = (parseD(data[0].day).getDay() + 1) % 7;   // السبت = 0
+  html += '<div class="cday blank"></div>'.repeat(offset);
+
+  let booked = 0, free = 0;
+  for (const d of data){
+    const cls = ['cday'];
+    if (d.booking_id){ cls.push('bk-' + d.status); booked++; }
+    else {
+      cls.push(d.day_type);
+      if (d.day >= t) free++;
+    }
+    if (d.day === t) cls.push('today');
+    if (d.day < t) cls.push('past');
+
+    const label = d.booking_id
+      ? esc(String(d.renter_name || '').split(' ')[0])
+      : d.day_type === 'holiday' ? esc(d.holiday_name || 'إجازة') : '';
+
+    html += `
+      <div class="${cls.join(' ')}" data-day="${d.day}" ${d.booking_id ? `data-bid="${d.booking_id}"` : ''}>
+        <span class="n">${parseD(d.day).getDate()}</span>
+        <span class="p">${plain(d.price)}</span>
+        ${label ? `<span class="nm">${label}</span>` : ''}
+      </div>`;
+  }
+  $('#calGrid').innerHTML = html;
+
+  // ملخص الشهر: الحجوزات التي تبدأ في هذا الشهر
+  const prefix = `${y}-${String(m).padStart(2,'0')}`;
+  const monthBk = S.bookings.filter(b => b.status !== 'cancelled' && b.start_date.startsWith(prefix));
+  const value = monthBk.reduce((s,b) => s + Number(b.agreed_total || 0), 0);
+  const rem   = monthBk.reduce((s,b) => s + Math.max(0, Number(b.remaining || 0)), 0);
+  $('#calSum').innerHTML = `
+    <div class="card"><span class="muted">أيام محجوزة</span><b>${booked}</b></div>
+    <div class="card"><span class="muted">أيام متاحة</span><b>${free}</b></div>
+    <div class="card"><span class="muted">قيمة الحجوزات</span><b style="font-size:16px">${plain(value)}</b>
+      ${rem > 0 ? `<span class="muted" style="color:var(--red)">متبقي ${plain(rem)}</span>` : ''}</div>`;
+}
+
+$('#calGrid').onclick = e => {
+  const c = e.target.closest('.cday'); if (!c || c.classList.contains('blank')) return;
+  if (c.dataset.bid) return openCard(Number(c.dataset.bid));
+  if (c.dataset.day < todayStr()) return toast('هذا يوم سابق', true);
+  openForm(null, c.dataset.day);
+};
 
 /* =====================================================================
    القائمة
@@ -473,7 +602,7 @@ $('#list').onclick = e => {
 /* =====================================================================
    نموذج الحجز
    ===================================================================== */
-function openForm(id){
+function openForm(id, startDay){
   S.editId = id;
   const b = id ? find(id) : null;
   const defDep = Number(S.settings?.default_deposit || 0);
@@ -481,8 +610,8 @@ function openForm(id){
 
   $('#fName').value     = b ? b.renter_name : '';
   $('#fPhone').value    = b ? b.phone : '';
-  $('#fStart').value    = b ? b.start_date : '';
-  $('#fEnd').value      = b ? b.end_date : '';
+  $('#fStart').value    = b ? b.start_date : (startDay || '');
+  $('#fEnd').value      = b ? b.end_date : (startDay || '');
   $('#fAgreed').value   = b ? b.agreed_total : '';
   $('#fHasDep').checked = hasDep;
   $('#fDeposit').value  = b && Number(b.deposit_amount) > 0 ? b.deposit_amount : defDep;
@@ -666,7 +795,7 @@ async function refreshCard(id, msg){
 }
 
 function renderCard(b, pays){
-  if (!b){ go('list'); return; }
+  if (!b){ go(S.home); return; }
   const st = STATUS[b.status], py = PAY[b.payment_status];
   const remaining = Number(b.remaining);
   const discount  = Number(b.discount);
@@ -893,7 +1022,7 @@ function bindCard(b){
     if (!confirm(`حذف حجز ${b.renter_name} نهائياً مع كل دفعاته؟\nلا يمكن التراجع.`)) return;
     const { error } = await sb.from('bookings').delete().eq('id', b.id);
     if (error) return toast('خطأ: ' + error.message, true);
-    await loadAll(); toast('تم حذف الحجز'); go('list');
+    await loadAll(); toast('تم حذف الحجز'); go(S.home);
   };
 }
 
