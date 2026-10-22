@@ -96,6 +96,13 @@
   .pday:last-child{border:0}
   .ptotal{display:flex;justify-content:space-between;font-weight:800;margin-top:8px;font-size:17px}
   .conflict{background:var(--red-bg);color:var(--red);border-radius:12px;padding:12px;margin-top:12px;font-weight:700}
+  .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:var(--bg);padding:5px;border-radius:14px}
+  .seg button{border:0;background:transparent;border-radius:10px;padding:11px 4px;font-weight:700;color:var(--muted);cursor:pointer;font-size:15px}
+  .seg button.on[data-p="none"]{background:var(--red-bg);color:var(--red)}
+  .seg button.on[data-p="partial"]{background:var(--amber-bg);color:var(--amber)}
+  .seg button.on[data-p="full"]{background:var(--green);color:#fff}
+  .pay-info{margin-top:10px;padding:12px;border-radius:12px;background:var(--bg);font-weight:700;font-size:15px;line-height:1.7}
+  input[readonly]{background:var(--bg);color:var(--muted)}
 
   /* ---------- البطاقة ---------- */
   .toprow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
@@ -186,18 +193,25 @@
           <input id="fDeposit" inputmode="numeric" class="ltr">
         </div>
 
-        <div class="grid2">
-          <div>
-            <label>حالة الحجز</label>
-            <select id="fStatus">
-              <option value="tentative">مبدئي</option>
-              <option value="confirmed">مؤكد</option>
-              <option value="completed">منتهي</option>
-              <option value="cancelled">ملغي</option>
-            </select>
+        <!-- الدفع عند التسجيل (يظهر في الحجز الجديد فقط) -->
+        <div id="fPayWrap">
+          <label>💰 الدفع</label>
+          <div class="seg" id="fPaySeg">
+            <button type="button" data-p="none">لم يدفع</button>
+            <button type="button" data-p="partial">سداد جزئي</button>
+            <button type="button" data-p="full">سداد كامل</button>
           </div>
-          <div><label>نوع المناسبة</label><input id="fOccasion" placeholder="عائلي، شباب..."></div>
+          <div id="fPayDetails" hidden>
+            <div class="grid2">
+              <div><label>المبلغ المدفوع</label><input id="fPaid" inputmode="numeric" class="ltr"></div>
+              <div><label>الطريقة</label><select id="fMethod"><option value="cash">نقد</option><option value="transfer">تحويل</option></select></div>
+            </div>
+          </div>
+          <div id="fPayInfo" class="pay-info"></div>
         </div>
+
+        <label>نوع المناسبة</label>
+        <input id="fOccasion" placeholder="عائلي، شباب...">
 
         <label>ملاحظات</label>
         <textarea id="fNotes"></textarea>
@@ -423,9 +437,13 @@ function openForm(id){
   $('#fHasDep').checked = hasDep;
   $('#fDeposit').value  = b && Number(b.deposit_amount) > 0 ? b.deposit_amount : defDep;
   $('#fDepWrap').hidden = !hasDep;
-  $('#fStatus').value   = b ? b.status : 'tentative';
   $('#fOccasion').value = b ? (b.occasion || '') : '';
   $('#fNotes').value    = b ? (b.notes || '') : '';
+  // الدفع يُسجل هنا في الحجز الجديد فقط — في التعديل تُدار الدفعات من بطاقة الحجز
+  $('#fPayWrap').hidden = !!b;
+  $('#fPaid').value = '';
+  $('#fMethod').value = 'cash';
+  setPayMode('none');
   // عند التعديل: إذا كان فيه خصم سابق نحافظ على المبلغ المتفق عليه
   S.agreedTouched = b ? Number(b.agreed_total) !== Number(b.expected_total) : false;
   go('form');
@@ -434,12 +452,46 @@ function openForm(id){
 
 $('#fHasDep').onchange = () => { $('#fDepWrap').hidden = !$('#fHasDep').checked; };
 
+/* ---- الدفع عند التسجيل ---- */
+S.payMode = 'none';
+function setPayMode(m){
+  S.payMode = m;
+  document.querySelectorAll('#fPaySeg button').forEach(x => x.classList.toggle('on', x.dataset.p === m));
+  $('#fPayDetails').hidden = m === 'none';
+  $('#fPaid').readOnly = m === 'full';
+  if (m === 'full') $('#fPaid').value = num($('#fAgreed').value);
+  if (m === 'partial' && num($('#fPaid').value) >= num($('#fAgreed').value)) $('#fPaid').value = '';
+  updatePayInfo();
+  if (m === 'partial') $('#fPaid').focus();
+}
+function paidNow(){
+  if (S.payMode === 'none') return 0;
+  if (S.payMode === 'full') return num($('#fAgreed').value);
+  return num($('#fPaid').value);
+}
+function updatePayInfo(){
+  if (S.payMode === 'full') $('#fPaid').value = num($('#fAgreed').value);
+  const agreed = num($('#fAgreed').value), paid = paidNow(), rem = agreed - paid;
+  let html;
+  if (S.payMode === 'none'){
+    html = `<span style="color:var(--amber)">سيُحفظ الحجز <b>مبدئياً</b> بدون دفع</span><br>المتبقي: ${money(agreed)}`;
+  } else if (paid > agreed){
+    html = `<span style="color:var(--red)">⚠️ المدفوع أكبر من المبلغ المتفق عليه</span>`;
+  } else {
+    html = `المدفوع: <span style="color:var(--green)">${money(paid)}</span> — المتبقي: <span style="color:${rem > 0 ? 'var(--red)' : 'var(--green)'}">${money(rem)}</span><br>
+            ${paid > 0 ? '<span style="color:var(--green)">سيُحفظ الحجز <b>مؤكداً</b> ✅</span>' : '<span class="muted">اكتب المبلغ المدفوع</span>'}`;
+  }
+  $('#fPayInfo').innerHTML = html;
+}
+$('#fPaySeg').onclick = e => { const x = e.target.closest('button'); if (x) setPayMode(x.dataset.p); };
+$('#fPaid').oninput = updatePayInfo;
+
 $('#fStart').onchange = () => {
   if (!$('#fEnd').value || $('#fEnd').value < $('#fStart').value) $('#fEnd').value = $('#fStart').value;
   updatePricing();
 };
 $('#fEnd').onchange = updatePricing;
-$('#fAgreed').oninput = () => { S.agreedTouched = true; };
+$('#fAgreed').oninput = () => { S.agreedTouched = true; updatePayInfo(); };
 
 async function updatePricing(){
   const s = $('#fStart').value, e = $('#fEnd').value, box = $('#priceBox');
@@ -459,6 +511,7 @@ async function updatePricing(){
   const days = br.data || [];
   S.expected = days.reduce((sum, d) => sum + Number(d.price || 0), 0);
   if (!S.agreedTouched) $('#fAgreed').value = S.expected;
+  updatePayInfo();
 
   let html = days.map(d => {
     const cls = d.day_type === 'holiday' ? 'b-amber' : d.day_type === 'weekend' ? 'b-blue' : 'b-gray';
@@ -484,19 +537,26 @@ $('#bForm').onsubmit = async e => {
     end_date:       $('#fEnd').value,
     agreed_total:   num($('#fAgreed').value),
     deposit_amount: hasDep ? num($('#fDeposit').value) : 0,
-    status:         $('#fStatus').value,
     occasion:       $('#fOccasion').value.trim(),
     notes:          $('#fNotes').value.trim()
   };
   // إزالة التأمين تمسح بياناته
   if (!hasDep) Object.assign(rec, { deposit_status:'not_collected', deposit_deducted:0, deduction_reason:'' });
 
+  // الحجز الجديد: الحالة تتحدد من الدفع (دفع = مؤكد ، بدون دفع = مبدئي)
+  const isNew = !S.editId;
+  const paid = isNew ? paidNow() : 0;
+  if (isNew) rec.status = paid > 0 ? 'confirmed' : 'tentative';
+
   if (!rec.renter_name)                    return toast('اكتب اسم المستأجر', true);
   if (!/^05\d{8}$/.test(rec.phone))        return toast('رقم الجوال يجب أن يكون 05 ثم 8 أرقام', true);
   if (!rec.start_date || !rec.end_date)    return toast('اختر أول يوم وآخر يوم', true);
   if (rec.end_date < rec.start_date)       return toast('آخر يوم قبل أول يوم', true);
   if (hasDep && rec.deposit_amount <= 0)   return toast('اكتب مبلغ التأمين أو أوقف خيار التأمين', true);
-  if (S.conflict && rec.status !== 'cancelled') return toast('الأيام محجوزة لحجز آخر', true);
+  if (isNew && S.payMode === 'partial' && paid <= 0) return toast('اكتب المبلغ المدفوع', true);
+  if (isNew && S.payMode === 'full' && paid <= 0)    return toast('المبلغ المتفق عليه صفر', true);
+  if (isNew && paid > rec.agreed_total)    return toast('المدفوع أكبر من المبلغ المتفق عليه', true);
+  if (S.conflict)                          return toast('الأيام محجوزة لحجز آخر', true);
 
   const btn = $('#saveBtn'); btn.disabled = true; btn.textContent = 'جاري الحفظ...';
   const q = S.editId
@@ -511,8 +571,23 @@ $('#bForm').onsubmit = async e => {
     else toast('خطأ: ' + error.message, true);
     return;
   }
+  // تسجيل الدفعة مع الحجز الجديد
+  if (paid > 0){
+    const pr = await sb.from('payments').insert({
+      booking_id: data.id, amount: paid, paid_on: todayStr(), method: $('#fMethod').value
+    });
+    if (pr.error){
+      await loadAll();
+      toast('حُفظ الحجز لكن تعذر تسجيل الدفعة — أضفها من البطاقة', true);
+      return openCard(data.id);
+    }
+  }
+
   await loadAll();
-  toast('تم حفظ الحجز ✅');
+  toast(!isNew ? 'تم حفظ التعديل ✅'
+       : paid >= rec.agreed_total ? 'تم تسجيل الحجز مسدداً بالكامل ✅'
+       : paid > 0 ? 'تم تسجيل الحجز والدفعة ✅'
+       : 'تم تسجيل الحجز مبدئياً');
   openCard(data.id);
 };
 
