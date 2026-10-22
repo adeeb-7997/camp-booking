@@ -179,12 +179,14 @@
   <header>
     <button id="backBtn" hidden>→</button>
     <h1 id="title">الحجوزات</h1>
+    <button id="setBtn" title="الإعدادات">⚙️</button>
     <button id="logoutBtn">خروج</button>
   </header>
 
   <main>
     <!-- القائمة -->
     <section id="vList">
+      <div class="conflict" id="pingWarn" style="margin:0 0 12px;cursor:pointer" hidden></div>
       <input class="search" id="search" type="search" placeholder="بحث بالاسم أو الجوال أو رقم الحجز">
       <div class="chips" id="chips"></div>
       <div class="summary" id="summary"></div>
@@ -212,6 +214,72 @@
         <span><i style="background:#9a9a9a"></i>منتهي</span>
       </div>
       <div class="muted" style="text-align:center;margin-top:10px">اضغط يوماً فاضياً لحجزه، أو يوماً محجوزاً لفتح الحجز</div>
+    </section>
+
+    <!-- الإعدادات -->
+    <section id="vSet" hidden>
+      <div class="card" id="pingCard"></div>
+
+      <form class="card" id="setForm">
+        <p class="sec-title">⛺ المخيم</p>
+        <label>اسم المخيم</label>
+        <input id="sName">
+        <label>رابط الموقع (قوقل ماب)</label>
+        <input id="sLoc" class="ltr" placeholder="https://maps.app.goo.gl/...">
+        <div class="grid2">
+          <div><label>وقت الدخول</label><input id="sIn" placeholder="4:00 عصراً"></div>
+          <div><label>وقت الخروج</label><input id="sOut" placeholder="2:00 ظهراً"></div>
+        </div>
+
+        <p class="sec-title" style="margin-top:22px">💵 الأسعار المتوقعة لليوم</p>
+        <div class="grid2">
+          <div><label>الأيام العادية<br><span class="muted">السبت – الأربعاء</span></label><input id="sWeekday" inputmode="numeric" class="ltr"></div>
+          <div><label>الويكند<br><span class="muted">الخميس والجمعة</span></label><input id="sWeekend" inputmode="numeric" class="ltr"></div>
+        </div>
+        <label>التأمين الافتراضي <span class="muted">(0 = بدون تأمين افتراضياً)</span></label>
+        <input id="sDeposit" inputmode="numeric" class="ltr">
+        <div class="muted" style="margin-top:8px">تغيير الأسعار يطبَّق على الحجوزات الجديدة فقط، ولا يغيّر الحجوزات المسجلة.</div>
+
+        <button class="btn primary block" style="margin-top:16px">حفظ الإعدادات</button>
+      </form>
+
+      <div class="card">
+        <p class="sec-title">🎉 الإجازات وأسعارها</p>
+        <div class="muted" style="margin:-4px 0 8px">سعر الإجازة يتقدم على سعر الويكند والأيام العادية</div>
+        <div id="holList"></div>
+        <form id="holForm" style="margin-top:6px">
+          <label>اسم الإجازة</label>
+          <input id="hName" placeholder="عيد الفطر، إجازة منتصف الفصل...">
+          <div class="grid2">
+            <div><label>من</label><input type="date" id="hStart"></div>
+            <div><label>إلى</label><input type="date" id="hEnd"></div>
+          </div>
+          <label>سعر اليوم</label>
+          <input id="hPrice" inputmode="numeric" class="ltr">
+          <div class="row" style="margin-top:12px">
+            <button type="button" class="btn" id="hCancel" style="flex:1" hidden>إلغاء التعديل</button>
+            <button class="btn primary" id="hSave" style="flex:1">＋ إضافة إجازة</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <p class="sec-title">📩 قوالب رسائل الواتساب</p>
+        <div class="muted" style="margin:-4px 0 6px;line-height:1.8">
+          الكلمات بين الأقواس تُستبدل تلقائياً:<br>
+          <span class="ltr" style="display:inline-block">{name} {camp} {booking_no} {from} {to} {days} {total} {paid} {remaining} {deposit} {checkin} {checkout} {location}</span>
+        </div>
+        <div id="tplList"></div>
+      </div>
+
+      <div class="card">
+        <p class="sec-title">💾 نسخة احتياطية</p>
+        <div class="muted" style="margin:-4px 0 10px">ملفات تفتح في Excel — احفظها كل فترة</div>
+        <div class="grid2">
+          <button class="btn" id="expBookings">⬇️ الحجوزات</button>
+          <button class="btn" id="expPayments">⬇️ الدفعات</button>
+        </div>
+      </div>
     </section>
 
     <!-- النموذج -->
@@ -414,18 +482,20 @@ $('#logoutBtn').onclick = async () => {
 async function startApp(){
   $('#app').hidden = false;
   $('#list').innerHTML = '<div class="loading">جاري التحميل...</div>';
-  sb.rpc('keep_alive', { p_source:'app' });   // تنشيط إضافي مع كل فتح
+  // ملاحظة: أي استخدام للموقع يُحتسب نشاطاً في Supabase تلقائياً
   const ok = await loadAll();
   if (ok) go('list');
 }
 
 async function loadAll(){
-  const [s, b, t] = await Promise.all([
+  const [s, b, t, h] = await Promise.all([
     sb.from('settings').select('*').eq('id', 1).maybeSingle(),
     sb.from('bookings_view').select('*').order('start_date'),
-    sb.from('message_templates').select('*').order('sort_order')
+    sb.from('message_templates').select('*').order('sort_order'),
+    sb.from('heartbeat').select('pinged_at').eq('source', 'github').order('pinged_at', { ascending:false }).limit(1)
   ]);
   S.templates = t.data || [];
+  S.lastPing = h.data && h.data[0] ? new Date(h.data[0].pinged_at) : null;
   if (s.error || b.error || !s.data){
     $('#list').innerHTML = '<div class="empty">⚠️ لا توجد صلاحية لهذا الحساب.<br>تأكد أن حسابك هو صاحب النظام في دالة is_owner.</div>';
     return false;
@@ -445,14 +515,17 @@ function go(view){
   if (view === 'list' || view === 'cal') S.home = view;
   $('#vList').hidden = view !== 'list';
   $('#vCal').hidden  = view !== 'cal';
+  $('#vSet').hidden  = view !== 'set';
   $('#vForm').hidden = view !== 'form';
   $('#vCard').hidden = view !== 'card';
   $('#backBtn').hidden = view === 'list' || view === 'cal';
   $('#nav').hidden = view === 'form';
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.go === view));
-  $('#title').textContent = { list:'الحجوزات', cal:'التقويم', form:(S.editId ? 'تعديل الحجز' : 'حجز جديد'), card:'تفاصيل الحجز' }[view];
+  $('#title').textContent = { list:'الحجوزات', cal:'التقويم', form:(S.editId ? 'تعديل الحجز' : 'حجز جديد'), card:'تفاصيل الحجز', set:'الإعدادات' }[view];
+  $('#setBtn').hidden = view === 'set';
   if (view === 'list') renderList();
   if (view === 'cal') renderCal();
+  if (view === 'set') renderSettings();
   window.scrollTo(0, 0);
 }
 
@@ -464,6 +537,185 @@ $('#backBtn').onclick = () => {
 document.querySelectorAll('#nav button').forEach(b => b.onclick = () => {
   if (b.dataset.go === 'new') openForm(null); else go(b.dataset.go);
 });
+
+$('#setBtn').onclick = () => go('set');
+$('#pingWarn').onclick = () => go('set');
+
+/* =====================================================================
+   مؤشر التنشيط التلقائي
+   ===================================================================== */
+function pingInfo(){
+  if (!S.lastPing) return { ok:false, text:'لم يُسجَّل أي تنشيط تلقائي من GitHub بعد' };
+  const days = (Date.now() - S.lastPing.getTime()) / 86400000;
+  const when = days < 1 ? 'اليوم' : days < 2 ? 'أمس' : `قبل ${Math.floor(days)} أيام`;
+  const at = S.lastPing.toLocaleString('ar-SA-u-ca-gregory-nu-latn', { day:'numeric', month:'numeric', hour:'numeric', minute:'2-digit' });
+  return { ok: days <= 5, text:`آخر تنشيط تلقائي: ${when} (${at})` };
+}
+
+/* =====================================================================
+   الإعدادات
+   ===================================================================== */
+async function renderSettings(){
+  const s = S.settings || {};
+  const p = pingInfo();
+  $('#pingCard').innerHTML = `
+    <div class="row between wrap">
+      <span><b>${p.ok ? '✅' : '⚠️'} ${p.text}</b></span>
+      <span class="badge ${p.ok ? 'b-green' : 'b-red'}">${p.ok ? 'يعمل' : 'تحقق من GitHub'}</span>
+    </div>
+    <div class="muted" style="margin-top:6px">${p.ok
+      ? 'مهمة GitHub تنشّط قاعدة البيانات الأحد والأربعاء، فلا يتوقف الموقع.'
+      : 'افتح المستودع ← Actions ← تنشيط قاعدة البيانات ← Run workflow، وتأكد من العلامة الخضراء.'}</div>`;
+
+  $('#sName').value    = s.camp_name || '';
+  $('#sLoc').value     = s.location_url || '';
+  $('#sIn').value      = s.checkin_time || '';
+  $('#sOut').value     = s.checkout_time || '';
+  $('#sWeekday').value = s.weekday_price ?? '';
+  $('#sWeekend').value = s.weekend_price ?? '';
+  $('#sDeposit').value = s.default_deposit ?? '';
+
+  resetHolForm();
+  loadHolidays();
+  renderTemplates();
+}
+
+$('#setForm').onsubmit = async e => {
+  e.preventDefault();
+  const rec = {
+    camp_name:       $('#sName').value.trim() || 'المخيم',
+    location_url:    $('#sLoc').value.trim(),
+    checkin_time:    $('#sIn').value.trim(),
+    checkout_time:   $('#sOut').value.trim(),
+    weekday_price:   num($('#sWeekday').value),
+    weekend_price:   num($('#sWeekend').value),
+    default_deposit: num($('#sDeposit').value)
+  };
+  const { data, error } = await sb.from('settings').update(rec).eq('id', 1).select().single();
+  if (error) return toast('خطأ: ' + error.message, true);
+  S.settings = data;
+  toast('تم حفظ الإعدادات ✅');
+};
+
+/* ---- الإجازات ---- */
+S.holidays = []; S.holEdit = null;
+
+async function loadHolidays(){
+  $('#holList').innerHTML = '<div class="muted">جاري التحميل...</div>';
+  const { data, error } = await sb.from('holidays').select('*').order('start_date');
+  if (error){ $('#holList').innerHTML = '<div class="muted">تعذر التحميل</div>'; return; }
+  S.holidays = data || [];
+  const t = todayStr();
+  $('#holList').innerHTML = S.holidays.length ? S.holidays.map(h => `
+    <div class="pay" style="${h.end_date < t ? 'opacity:.5' : ''}">
+      <div>
+        <b>${esc(h.name)}</b> <span class="badge b-amber">${money(h.price_per_day)} / يوم</span>
+        <div class="muted">${fmtDateY(h.start_date)} ← ${fmtDateY(h.end_date)}${h.end_date < t ? ' — منتهية' : ''}</div>
+      </div>
+      <div class="row">
+        <button class="btn small" data-hedit="${h.id}">✏️</button>
+        <button class="x" data-hdel="${h.id}">×</button>
+      </div>
+    </div>`).join('') : '<div class="muted">لا توجد إجازات مضافة</div>';
+}
+
+function resetHolForm(){
+  S.holEdit = null;
+  $('#hName').value = ''; $('#hStart').value = ''; $('#hEnd').value = ''; $('#hPrice').value = '';
+  $('#hSave').textContent = '＋ إضافة إجازة';
+  $('#hCancel').hidden = true;
+}
+$('#hCancel').onclick = resetHolForm;
+$('#hStart').onchange = () => { if (!$('#hEnd').value || $('#hEnd').value < $('#hStart').value) $('#hEnd').value = $('#hStart').value; };
+
+$('#holList').onclick = async e => {
+  const ed = e.target.closest('[data-hedit]'), del = e.target.closest('[data-hdel]');
+  if (ed){
+    const h = S.holidays.find(x => x.id === Number(ed.dataset.hedit)); if (!h) return;
+    S.holEdit = h.id;
+    $('#hName').value = h.name; $('#hStart').value = h.start_date; $('#hEnd').value = h.end_date; $('#hPrice').value = h.price_per_day;
+    $('#hSave').textContent = 'حفظ التعديل'; $('#hCancel').hidden = false;
+    $('#hName').focus();
+  }
+  if (del){
+    if (!confirm('حذف هذه الإجازة؟')) return;
+    const { error } = await sb.from('holidays').delete().eq('id', Number(del.dataset.hdel));
+    if (error) return toast('خطأ: ' + error.message, true);
+    toast('تم حذف الإجازة'); resetHolForm(); loadHolidays();
+  }
+};
+
+$('#holForm').onsubmit = async e => {
+  e.preventDefault();
+  const rec = {
+    name: $('#hName').value.trim(), start_date: $('#hStart').value,
+    end_date: $('#hEnd').value, price_per_day: num($('#hPrice').value)
+  };
+  if (!rec.name) return toast('اكتب اسم الإجازة', true);
+  if (!rec.start_date || !rec.end_date) return toast('حدد تاريخ البداية والنهاية', true);
+  if (rec.end_date < rec.start_date) return toast('تاريخ النهاية قبل البداية', true);
+  if (rec.price_per_day <= 0) return toast('اكتب سعر اليوم', true);
+  const { error } = S.holEdit
+    ? await sb.from('holidays').update(rec).eq('id', S.holEdit)
+    : await sb.from('holidays').insert(rec);
+  if (error) return toast('خطأ: ' + error.message, true);
+  toast(S.holEdit ? 'تم تعديل الإجازة ✅' : 'تمت إضافة الإجازة ✅');
+  resetHolForm(); loadHolidays();
+};
+
+/* ---- قوالب الرسائل ---- */
+function renderTemplates(){
+  $('#tplList').innerHTML = (S.templates || []).map(t => `
+    <div style="margin-top:14px">
+      <label style="margin-top:0">${esc(t.title)}</label>
+      <textarea data-tpl="${esc(t.key)}" style="min-height:130px">${esc(t.body)}</textarea>
+      <button class="btn small" data-tplsave="${esc(t.key)}" style="margin-top:6px">حفظ القالب</button>
+    </div>`).join('');
+}
+
+$('#tplList').onclick = async e => {
+  const b = e.target.closest('[data-tplsave]'); if (!b) return;
+  const key = b.dataset.tplsave;
+  const body = $(`textarea[data-tpl="${key}"]`).value.trim();
+  if (!body) return toast('القالب فارغ', true);
+  const { error } = await sb.from('message_templates').update({ body }).eq('key', key);
+  if (error) return toast('خطأ: ' + error.message, true);
+  const t = S.templates.find(x => x.key === key); if (t) t.body = body;
+  toast('تم حفظ القالب ✅');
+};
+
+/* ---- النسخة الاحتياطية (CSV يفتح في Excel) ---- */
+function downloadCSV(filename, rows){
+  const csv = '﻿' + rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8' }));
+  a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+$('#expBookings').onclick = async () => {
+  await loadAll();
+  const rows = [['رقم الحجز','المستأجر','الجوال','من','إلى','الأيام','المناسبة','السعر المتوقع','المتفق عليه','المدفوع','المتبقي','حالة الدفع','التأمين','حالة التأمين','المخصوم من التأمين','سبب الخصم','حالة الحجز','ملاحظات','تاريخ التسجيل']];
+  [...S.bookings].sort((a,b) => a.start_date.localeCompare(b.start_date)).forEach(b => rows.push([
+    b.booking_no, b.renter_name, b.phone, b.start_date, b.end_date, b.days, b.occasion,
+    b.expected_total, b.agreed_total, b.paid, b.remaining, PAY[b.payment_status][0],
+    b.deposit_amount, Number(b.deposit_amount) > 0 ? DEP[b.deposit_status] : 'بدون',
+    b.deposit_deducted, b.deduction_reason, STATUS[b.status][0], b.notes, String(b.created_at).slice(0,10)
+  ]));
+  downloadCSV(`حجوزات-المخيم-${todayStr()}.csv`, rows);
+};
+
+$('#expPayments').onclick = async () => {
+  const { data, error } = await sb.from('payments').select('*').order('paid_on');
+  if (error) return toast('خطأ: ' + error.message, true);
+  const rows = [['التاريخ','رقم الحجز','المستأجر','المبلغ','الطريقة','ملاحظة']];
+  (data || []).forEach(p => {
+    const b = find(p.booking_id) || {};
+    rows.push([p.paid_on, b.booking_no, b.renter_name, p.amount, p.method === 'cash' ? 'نقد' : 'تحويل', p.note]);
+  });
+  downloadCSV(`دفعات-المخيم-${todayStr()}.csv`, rows);
+};
 
 /* =====================================================================
    التقويم الشهري
@@ -550,6 +802,9 @@ $('#chips').onclick = e => {
 $('#search').oninput = e => { S.search = e.target.value; renderList(); };
 
 function renderList(){
+  const pi = pingInfo();
+  $('#pingWarn').hidden = pi.ok;
+  if (!pi.ok) $('#pingWarn').innerHTML = `⚠️ ${pi.text}<br><span style="font-weight:500">اضغط هنا لفتح الإعدادات</span>`;
   document.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.f === S.filter));
   const t = todayStr();
   const q = toLatin(S.search).trim();
