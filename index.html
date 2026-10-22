@@ -91,6 +91,9 @@
   textarea{min-height:70px;resize:vertical}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .grid2 label{margin-top:14px}
+  .grid2>*{min-width:0}
+  input,select{min-width:0;max-width:100%}
+  input[type="date"]{display:block;-webkit-appearance:none;appearance:none;min-height:48px;text-align:right}
   .ltr{direction:ltr;text-align:right}
 
   /* ---------- مفتاح تشغيل/إيقاف ---------- */
@@ -387,7 +390,7 @@ const fmtWeekday = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-latn', { weekd
 const fmtDate = s => { const d = parseD(s); return `${fmtWeekday.format(d)} ${d.getDate()}/${d.getMonth()+1}`; };
 const fmtDateY = s => { const d = parseD(s); return `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`; };
 const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
-const daysLabel = n => `${n} ${n > 2 && n < 11 ? 'أيام' : 'يوم'}`;
+const daysLabel = n => n == 1 ? 'يوم واحد' : n == 2 ? 'يومان' : `${n} ${n < 11 ? 'أيام' : 'يوماً'}`;
 const find = id => S.bookings.find(b => b.id === id);
 
 function normPhone(s){
