@@ -123,6 +123,8 @@
   .step .body{flex:1;min-width:0}
   .step h4{margin:5px 0 10px;font-size:16px}
   .done-note{color:var(--green);font-weight:700}
+  .msgs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .msgs .btn{padding:12px 8px;font-size:15px}
   .cancel-banner{background:var(--red-bg);color:var(--red);border-radius:var(--radius);padding:16px;margin-bottom:12px;font-weight:800;display:flex;align-items:center;justify-content:space-between;gap:10px}
 
   /* ---------- تنبيه ---------- */
@@ -281,6 +283,52 @@ function normPhone(s){
 }
 const waLink = phone => 'https://wa.me/966' + phone.slice(1);
 
+/* ---- رسائل الواتساب الجاهزة ---- */
+const plain = n => Number(n || 0).toLocaleString('en-US');
+
+// متى يظهر كل قالب
+function templateApplies(key, b){
+  const hasDep = Number(b.deposit_amount) > 0;
+  switch (key){
+    case 'confirm':   return b.status === 'confirmed' || b.status === 'completed';
+    case 'remaining': return Number(b.remaining) > 0;
+    case 'reminder':  return b.status !== 'completed';
+    case 'deposit':   return hasDep && (b.deposit_status === 'refunded' || b.deposit_status === 'deducted');
+    case 'thanks':    return b.status === 'completed';
+    default:          return true;
+  }
+}
+
+function buildMsg(key, b){
+  const t = (S.templates || []).find(x => x.key === key);
+  if (!t) return '';
+  const s = S.settings || {};
+  const hasDep = Number(b.deposit_amount) > 0;
+  const vals = {
+    name: b.renter_name, camp: s.camp_name || 'المخيم', booking_no: b.booking_no,
+    from: fmtDate(b.start_date), to: fmtDate(b.end_date), days: b.days,
+    total: plain(b.agreed_total), paid: plain(b.paid), remaining: plain(Math.max(0, Number(b.remaining))),
+    deposit: plain(b.deposit_amount), checkin: s.checkin_time || '', checkout: s.checkout_time || '',
+    location: s.location_url || ''
+  };
+  let lines = t.body.split('\n')
+    // حذف سطر التأمين إذا ما فيه تأمين، وسطر الموقع إذا ما أُضيف رابط
+    .filter(l => !(l.includes('{deposit}') && !hasDep))
+    .filter(l => !(l.includes('{location}') && !vals.location));
+  let msg = lines.join('\n').replace(/\{(\w+)\}/g, (m, k) => (k in vals ? vals[k] : m));
+
+  // رسالة التأمين: توضيح الخصم إن وُجد
+  if (key === 'deposit' && b.deposit_status === 'deducted'){
+    const ded = Number(b.deposit_deducted || 0);
+    msg = msg.replace('تم استرداد مبلغ التأمين', 'بخصوص مبلغ التأمين')
+      + `\nالمخصوم: ${plain(ded)} ريال${b.deduction_reason ? ' — ' + b.deduction_reason : ''}`
+      + `\nالمسترد: ${plain(Number(b.deposit_amount) - ded)} ريال`;
+  }
+  return msg;
+}
+
+const waMsgLink = (key, b) => waLink(b.phone) + '?text=' + encodeURIComponent(buildMsg(key, b));
+
 let toastTimer;
 function toast(msg, err=false){
   const t = $('#toast');
@@ -323,10 +371,12 @@ async function startApp(){
 }
 
 async function loadAll(){
-  const [s, b] = await Promise.all([
+  const [s, b, t] = await Promise.all([
     sb.from('settings').select('*').eq('id', 1).maybeSingle(),
-    sb.from('bookings_view').select('*').order('start_date')
+    sb.from('bookings_view').select('*').order('start_date'),
+    sb.from('message_templates').select('*').order('sort_order')
   ]);
+  S.templates = t.data || [];
   if (s.error || b.error || !s.data){
     $('#list').innerHTML = '<div class="empty">⚠️ لا توجد صلاحية لهذا الحساب.<br>تأكد أن حسابك هو صاحب النظام في دالة is_owner.</div>';
     return false;
@@ -653,7 +703,8 @@ function renderCard(b, pays){
         <div class="body">
           <h4>تأكيد الحجز</h4>
           ${confirmed
-            ? '<div class="done-note">تم تأكيد الحجز ✅</div>'
+            ? `<div class="row between wrap"><span class="done-note">تم تأكيد الحجز ✅</span>
+               <a class="btn wa small" href="${waMsgLink('confirm', b)}" target="_blank" rel="noopener">📩 أرسل رسالة التأكيد</a></div>`
             : '<button class="btn green block" data-status="confirmed" data-msg="تأكيد الحجز؟">✅ تأكيد الحجز</button>'}
         </div>
       </div>
@@ -717,6 +768,17 @@ function renderCard(b, pays){
       </div>
     </div>`;
 
+  /* ---- رسائل الواتساب ---- */
+  const usable = cancelled ? [] : (S.templates || []).filter(t => templateApplies(t.key, b));
+  const msgCard = usable.length ? `
+    <div class="card">
+      <p class="sec-title">📩 رسائل واتساب جاهزة</p>
+      <div class="muted" style="margin:-4px 0 10px">تفتح الواتساب والرسالة مكتوبة — اضغط إرسال فقط</div>
+      <div class="msgs">
+        ${usable.map(t => `<a class="btn" href="${waMsgLink(t.key, b)}" target="_blank" rel="noopener">${esc(t.title)}</a>`).join('')}
+      </div>
+    </div>` : '';
+
   $('#vCard').innerHTML = `
     <div class="toprow">
       <button class="btn" id="editBtn">✏️ تعديل الحجز</button>
@@ -744,6 +806,7 @@ function renderCard(b, pays){
 
     ${steps}
     ${depCard}
+    ${msgCard}
 
     ${b.notes ? `<div class="card"><p class="sec-title">ملاحظات</p><div style="white-space:pre-wrap">${esc(b.notes)}</div></div>` : ''}
 
