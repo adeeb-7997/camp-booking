@@ -58,6 +58,7 @@
   .btn.wa{background:#25d366;color:#fff}
   .btn.danger{background:var(--red-bg);color:var(--red)}
   .btn.block{width:100%}
+  .btn.small{padding:8px 12px;font-size:14px}
   .btn:disabled{opacity:.5;cursor:not-allowed}
   label{display:block;font-size:14px;font-weight:700;margin:14px 0 6px}
   input,select,textarea{width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);outline:none}
@@ -66,6 +67,14 @@
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .grid2 label{margin-top:14px}
   .ltr{direction:ltr;text-align:right}
+
+  /* ---------- مفتاح تشغيل/إيقاف ---------- */
+  .switch{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;background:#fff;cursor:pointer;margin:14px 0 0;font-size:15px}
+  .switch input{display:none}
+  .switch .tg{width:50px;height:28px;border-radius:999px;background:#d6ccbe;position:relative;transition:.2s;flex:none}
+  .switch .tg::after{content:'';position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+  .switch input:checked + .tg{background:var(--green)}
+  .switch input:checked + .tg::after{right:25px}
 
   /* ---------- القائمة ---------- */
   .search{margin-bottom:10px}
@@ -89,15 +98,25 @@
   .conflict{background:var(--red-bg);color:var(--red);border-radius:12px;padding:12px;margin-top:12px;font-weight:700}
 
   /* ---------- البطاقة ---------- */
+  .toprow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
   .money{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
   .money div{background:var(--bg);border-radius:12px;padding:10px 4px}
-  .money b{display:block;font-size:17px;margin-top:2px}
+  .money b{display:block;font-size:16px;margin-top:2px}
   .sec-title{font-weight:800;margin:0 0 10px;font-size:16px}
   .pay{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)}
   .pay:last-child{border:0}
-  .x{border:0;background:var(--red-bg);color:var(--red);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:18px}
-  .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .x{border:0;background:var(--red-bg);color:var(--red);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:18px;flex:none}
   .phone-link{color:var(--blue);text-decoration:none;font-weight:700;direction:ltr;display:inline-block}
+
+  .step{display:flex;gap:12px;padding:16px 0;border-bottom:1px solid var(--line)}
+  .step:first-of-type{padding-top:4px}
+  .step:last-child{border:0;padding-bottom:0}
+  .step .dot{flex:none;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;background:var(--brand-soft);color:var(--brand)}
+  .step.done .dot{background:var(--green);color:#fff}
+  .step .body{flex:1;min-width:0}
+  .step h4{margin:5px 0 10px;font-size:16px}
+  .done-note{color:var(--green);font-weight:700}
+  .cancel-banner{background:var(--red-bg);color:var(--red);border-radius:var(--radius);padding:16px;margin-bottom:12px;font-weight:800;display:flex;align-items:center;justify-content:space-between;gap:10px}
 
   /* ---------- تنبيه ---------- */
   #toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;opacity:0;pointer-events:none;transition:.25s;z-index:50;max-width:90vw;text-align:center}
@@ -154,9 +173,17 @@
 
         <div id="priceBox" class="price-box"></div>
 
-        <div class="grid2">
-          <div><label>المبلغ المتفق عليه</label><input id="fAgreed" inputmode="numeric" class="ltr"></div>
-          <div><label>مبلغ التأمين</label><input id="fDeposit" inputmode="numeric" class="ltr"></div>
+        <label>المبلغ المتفق عليه</label>
+        <input id="fAgreed" inputmode="numeric" class="ltr">
+
+        <label class="switch">
+          <span>🛡️ يوجد تأمين على الحجز</span>
+          <input type="checkbox" id="fHasDep">
+          <span class="tg"></span>
+        </label>
+        <div id="fDepWrap">
+          <label>مبلغ التأمين</label>
+          <input id="fDeposit" inputmode="numeric" class="ltr">
         </div>
 
         <div class="grid2">
@@ -227,6 +254,7 @@ const fmtWeekday = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-latn', { weekd
 const fmtDate = s => { const d = parseD(s); return `${fmtWeekday.format(d)} ${d.getDate()}/${d.getMonth()+1}`; };
 const fmtDateY = s => { const d = parseD(s); return `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`; };
 const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+const daysLabel = n => `${n} ${n > 2 && n < 11 ? 'أيام' : 'يوم'}`;
 const find = id => S.bookings.find(b => b.id === id);
 
 function normPhone(s){
@@ -286,7 +314,7 @@ async function loadAll(){
     sb.from('bookings_view').select('*').order('start_date')
   ]);
   if (s.error || b.error || !s.data){
-    $('#list').innerHTML = '<div class="empty">⚠️ لا توجد صلاحية لهذا الحساب.<br>تأكد أن الإيميل في دالة is_owner مطابق لإيميل الدخول.</div>';
+    $('#list').innerHTML = '<div class="empty">⚠️ لا توجد صلاحية لهذا الحساب.<br>تأكد أن حسابك هو صاحب النظام في دالة is_owner.</div>';
     return false;
   }
   S.settings = s.data;
@@ -362,9 +390,9 @@ function renderList(){
         <h3>${esc(b.renter_name)}</h3>
         <span class="badge ${st[1]}">${st[0]}</span>
       </div>
-      <div class="dates">📅 ${fmtDate(b.start_date)} ← ${fmtDate(b.end_date)} <span class="muted">(${b.days} ${b.days > 2 && b.days < 11 ? 'أيام' : 'يوم'})</span></div>
+      <div class="dates">📅 ${fmtDate(b.start_date)} ← ${fmtDate(b.end_date)} <span class="muted">(${daysLabel(b.days)})</span></div>
       <div class="row between wrap">
-        <span class="muted">${esc(b.booking_no)}</span>
+        <span class="muted">${esc(b.booking_no)}${Number(b.deposit_amount) > 0 ? ' — 🛡️ تأمين' : ''}</span>
         <span class="row">
           ${b.status !== 'cancelled' && Number(b.remaining) > 0 ? `<span class="muted">متبقي ${money(b.remaining)}</span>` : ''}
           <span class="badge ${py[1]}">${py[0]}</span>
@@ -384,12 +412,17 @@ $('#list').onclick = e => {
 function openForm(id){
   S.editId = id;
   const b = id ? find(id) : null;
+  const defDep = Number(S.settings?.default_deposit || 0);
+  const hasDep = b ? Number(b.deposit_amount) > 0 : defDep > 0;
+
   $('#fName').value     = b ? b.renter_name : '';
   $('#fPhone').value    = b ? b.phone : '';
   $('#fStart').value    = b ? b.start_date : '';
   $('#fEnd').value      = b ? b.end_date : '';
   $('#fAgreed').value   = b ? b.agreed_total : '';
-  $('#fDeposit').value  = b ? b.deposit_amount : (S.settings?.default_deposit ?? 0);
+  $('#fHasDep').checked = hasDep;
+  $('#fDeposit').value  = b && Number(b.deposit_amount) > 0 ? b.deposit_amount : defDep;
+  $('#fDepWrap').hidden = !hasDep;
   $('#fStatus').value   = b ? b.status : 'tentative';
   $('#fOccasion').value = b ? (b.occasion || '') : '';
   $('#fNotes').value    = b ? (b.notes || '') : '';
@@ -398,6 +431,8 @@ function openForm(id){
   go('form');
   updatePricing();
 }
+
+$('#fHasDep').onchange = () => { $('#fDepWrap').hidden = !$('#fHasDep').checked; };
 
 $('#fStart').onchange = () => {
   if (!$('#fEnd').value || $('#fEnd').value < $('#fStart').value) $('#fEnd').value = $('#fStart').value;
@@ -430,7 +465,7 @@ async function updatePricing(){
     const lbl = d.day_type === 'holiday' ? esc(d.holiday_name) : DAYTYPE[d.day_type];
     return `<div class="pday"><span>${fmtDate(d.day)} <span class="badge ${cls}">${lbl}</span></span><span>${money(d.price)}</span></div>`;
   }).join('');
-  html += `<div class="ptotal"><span>المجموع المتوقع (${days.length} ${days.length > 2 && days.length < 11 ? 'أيام' : 'يوم'})</span><span>${money(S.expected)}</span></div>`;
+  html += `<div class="ptotal"><span>المجموع المتوقع (${daysLabel(days.length)})</span><span>${money(S.expected)}</span></div>`;
 
   if (cf.data && cf.data.length){
     S.conflict = true;
@@ -441,22 +476,26 @@ async function updatePricing(){
 
 $('#bForm').onsubmit = async e => {
   e.preventDefault();
+  const hasDep = $('#fHasDep').checked;
   const rec = {
     renter_name:    $('#fName').value.trim(),
     phone:          normPhone($('#fPhone').value),
     start_date:     $('#fStart').value,
     end_date:       $('#fEnd').value,
     agreed_total:   num($('#fAgreed').value),
-    deposit_amount: num($('#fDeposit').value),
+    deposit_amount: hasDep ? num($('#fDeposit').value) : 0,
     status:         $('#fStatus').value,
     occasion:       $('#fOccasion').value.trim(),
     notes:          $('#fNotes').value.trim()
   };
+  // إزالة التأمين تمسح بياناته
+  if (!hasDep) Object.assign(rec, { deposit_status:'not_collected', deposit_deducted:0, deduction_reason:'' });
 
   if (!rec.renter_name)                    return toast('اكتب اسم المستأجر', true);
   if (!/^05\d{8}$/.test(rec.phone))        return toast('رقم الجوال يجب أن يكون 05 ثم 8 أرقام', true);
   if (!rec.start_date || !rec.end_date)    return toast('اختر أول يوم وآخر يوم', true);
   if (rec.end_date < rec.start_date)       return toast('آخر يوم قبل أول يوم', true);
+  if (hasDep && rec.deposit_amount <= 0)   return toast('اكتب مبلغ التأمين أو أوقف خيار التأمين', true);
   if (S.conflict && rec.status !== 'cancelled') return toast('الأيام محجوزة لحجز آخر', true);
 
   const btn = $('#saveBtn'); btn.disabled = true; btn.textContent = 'جاري الحفظ...';
@@ -478,167 +517,240 @@ $('#bForm').onsubmit = async e => {
 };
 
 /* =====================================================================
-   بطاقة الحجز
+   بطاقة الحجز — كل العمليات من مكانها بدون رجوع
    ===================================================================== */
-async function openCard(id){
+async function openCard(id, refresh = false){
   S.currentId = id;
   S.editId = null;
-  go('card');
-  $('#vCard').innerHTML = '<div class="loading">جاري التحميل...</div>';
+  const y = window.scrollY;
+  if (!refresh){
+    go('card');
+    $('#vCard').innerHTML = '<div class="loading">جاري التحميل...</div>';
+  }
   const { data: pays, error } = await sb.from('payments').select('*').eq('booking_id', id).order('paid_on').order('id');
   if (error) return toast('تعذر تحميل الدفعات', true);
   renderCard(find(id), pays || []);
+  if (refresh) window.scrollTo(0, y);   // البقاء في نفس المكان بعد أي عملية
+}
+
+// تحديث البيانات وإعادة رسم البطاقة في مكانها
+async function refreshCard(id, msg){
+  await loadAll();
+  if (msg) toast(msg);
+  openCard(id, true);
 }
 
 function renderCard(b, pays){
   if (!b){ go('list'); return; }
   const st = STATUS[b.status], py = PAY[b.payment_status];
-  const discount = Number(b.discount);
+  const remaining = Number(b.remaining);
+  const discount  = Number(b.discount);
+  const confirmed = b.status === 'confirmed' || b.status === 'completed';
+  const completed = b.status === 'completed';
+  const paidFull  = remaining <= 0 && Number(b.agreed_total) > 0;
+  const hasDep    = Number(b.deposit_amount) > 0;
+  const cancelled = b.status === 'cancelled';
 
-  const payRows = pays.length
-    ? pays.map(p => `
-      <div class="pay">
-        <div><b>${money(p.amount)}</b><div class="muted">${fmtDateY(p.paid_on)} — ${p.method === 'cash' ? 'نقد' : 'تحويل'}${p.note ? ' — ' + esc(p.note) : ''}</div></div>
-        <button class="x" data-del-pay="${p.id}" title="حذف">×</button>
-      </div>`).join('')
-    : '<div class="muted">لا توجد دفعات بعد</div>';
+  /* ---- سجل الدفعات ---- */
+  const payRows = pays.map(p => `
+    <div class="pay">
+      <div><b>${money(p.amount)}</b><div class="muted">${fmtDateY(p.paid_on)} — ${p.method === 'cash' ? 'نقد' : 'تحويل'}${p.note ? ' — ' + esc(p.note) : ''}</div></div>
+      <button class="x" data-del-pay="${p.id}" title="حذف">×</button>
+    </div>`).join('');
 
-  let actions = '';
-  if (b.status === 'tentative') actions += `<button class="btn green" data-status="confirmed">✅ تأكيد الحجز</button>`;
-  if (b.status === 'confirmed') actions += `<button class="btn" data-status="completed">🏁 إنهاء (تم الخروج)</button>`;
-  if (b.status === 'cancelled') actions += `<button class="btn" data-status="tentative">↩️ استرجاع الحجز</button>`;
-  else actions += `<button class="btn danger" data-status="cancelled">إلغاء الحجز</button>`;
-  actions += `<button class="btn" id="editBtn">✏️ تعديل</button>`;
-  actions += `<button class="btn danger" id="delBtn">🗑️ حذف نهائي</button>`;
+  /* ---- نموذج الدفع ---- */
+  const payForm = `
+    <form id="payForm" style="margin-top:10px">
+      <div class="grid2">
+        <div><label>المبلغ</label><input id="pAmount" inputmode="numeric" class="ltr" value="${remaining > 0 ? remaining : ''}"></div>
+        <div><label>الطريقة</label><select id="pMethod"><option value="cash">نقد</option><option value="transfer">تحويل</option></select></div>
+      </div>
+      <label>تاريخ الدفع</label>
+      <input type="date" id="pDate" value="${todayStr()}">
+      <button class="btn primary block" style="margin-top:12px">💰 تسجيل الدفعة</button>
+    </form>`;
+
+  /* ---- خطوات الحجز ---- */
+  const steps = cancelled ? '' : `
+    <div class="card">
+      <div class="step ${confirmed ? 'done' : ''}">
+        <div class="dot">${confirmed ? '✓' : '1'}</div>
+        <div class="body">
+          <h4>تأكيد الحجز</h4>
+          ${confirmed
+            ? '<div class="done-note">تم تأكيد الحجز ✅</div>'
+            : '<button class="btn green block" data-status="confirmed" data-msg="تأكيد الحجز؟">✅ تأكيد الحجز</button>'}
+        </div>
+      </div>
+
+      <div class="step ${paidFull ? 'done' : ''}">
+        <div class="dot">${paidFull ? '✓' : '2'}</div>
+        <div class="body">
+          <div class="row between"><h4>الدفع</h4><span class="badge ${py[1]}">${py[0]}</span></div>
+          <div class="money">
+            <div><span class="muted">المتفق عليه</span><b>${money(b.agreed_total)}</b></div>
+            <div><span class="muted">المدفوع</span><b style="color:var(--green)">${money(b.paid)}</b></div>
+            <div><span class="muted">المتبقي</span><b style="color:${remaining > 0 ? 'var(--red)' : 'var(--green)'}">${money(Math.max(0, remaining))}</b></div>
+          </div>
+          ${discount > 0 ? `<div class="muted" style="margin-top:8px">السعر المتوقع ${money(b.expected_total)} — خصم ${money(discount)}</div>` : ''}
+          ${remaining < 0 ? `<div class="muted" style="margin-top:8px;color:var(--amber)">⚠️ المدفوع أكثر من المتفق عليه بـ ${money(-remaining)}</div>` : ''}
+          ${pays.length ? `<div style="margin-top:10px">${payRows}</div>` : ''}
+          ${paidFull
+            ? '<div class="done-note" style="margin-top:10px">مسدد بالكامل ✅</div>'
+            : payForm}
+        </div>
+      </div>
+
+      <div class="step ${completed ? 'done' : ''}">
+        <div class="dot">${completed ? '✓' : '3'}</div>
+        <div class="body">
+          <h4>إنهاء الطلب</h4>
+          ${completed
+            ? `<div class="row between"><span class="done-note">تم إنهاء الحجز ✅</span>
+               <button class="btn small" data-status="confirmed" data-msg="إعادة فتح الحجز؟">↩️ إعادة فتح</button></div>`
+            : `<button class="btn primary block" data-status="completed"
+                 data-msg="${remaining > 0 ? `المتبقي ${money(remaining)} لم يُسدد بعد.\nإنهاء الطلب رغم ذلك؟` : 'إنهاء الطلب (تم الخروج)؟'}">🏁 إنهاء الطلب</button>`}
+        </div>
+      </div>
+    </div>`;
+
+  /* ---- التأمين ---- */
+  const depCard = `
+    <div class="card">
+      <label class="switch" style="margin:0">
+        <span><b>🛡️ التأمين</b> <span class="muted">${hasDep ? money(b.deposit_amount) + ' — ' + DEP[b.deposit_status] : 'بدون تأمين'}</span></span>
+        <input type="checkbox" id="dHas" ${hasDep ? 'checked' : ''}>
+        <span class="tg"></span>
+      </label>
+      <div id="dBody" ${hasDep ? '' : 'hidden'}>
+        <div class="grid2">
+          <div><label>مبلغ التأمين</label><input id="dTotal" inputmode="numeric" class="ltr" value="${hasDep ? b.deposit_amount : (S.settings?.default_deposit || '')}"></div>
+          <div>
+            <label>الحالة</label>
+            <select id="dStatus">
+              ${Object.entries(DEP).map(([k,l]) => `<option value="${k}" ${b.deposit_status === k ? 'selected' : ''}>${l}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div id="dDeduct" ${b.deposit_status === 'deducted' ? '' : 'hidden'}>
+          <div class="grid2">
+            <div><label>المبلغ المخصوم</label><input id="dAmount" inputmode="numeric" class="ltr" value="${b.deposit_deducted || ''}"></div>
+            <div><label>سبب الخصم</label><input id="dReason" value="${esc(b.deduction_reason)}"></div>
+          </div>
+        </div>
+        <button class="btn block" style="margin-top:12px" id="dSave">حفظ التأمين</button>
+      </div>
+    </div>`;
 
   $('#vCard').innerHTML = `
+    <div class="toprow">
+      <button class="btn" id="editBtn">✏️ تعديل الحجز</button>
+      <button class="btn danger" id="delBtn">🗑️ حذف الحجز</button>
+    </div>
+
+    ${cancelled ? `
+      <div class="cancel-banner">
+        <span>⛔ هذا الحجز ملغي</span>
+        <button class="btn small" data-status="tentative" data-msg="استرجاع الحجز كمبدئي؟">↩️ استرجاع</button>
+      </div>` : ''}
+
     <div class="card">
       <div class="row between">
         <h2 style="margin:0;font-size:21px">${esc(b.renter_name)}</h2>
         <span class="badge ${st[1]}">${st[0]}</span>
       </div>
       <div class="muted" style="margin-top:4px">${esc(b.booking_no)}${b.occasion ? ' — ' + esc(b.occasion) : ''}</div>
-      <div style="margin:14px 0 4px;font-size:16px">📅 ${fmtDate(b.start_date)} ← ${fmtDate(b.end_date)} <span class="muted">(${b.days} ${b.days > 2 && b.days < 11 ? 'أيام' : 'يوم'})</span></div>
+      <div style="margin:14px 0 4px;font-size:16px">📅 ${fmtDate(b.start_date)} ← ${fmtDate(b.end_date)} <span class="muted">(${daysLabel(b.days)})</span></div>
       <div class="row between" style="margin-top:12px">
         <a class="phone-link" href="tel:${b.phone}">📞 ${b.phone}</a>
         <a class="btn wa" href="${waLink(b.phone)}" target="_blank" rel="noopener">واتساب</a>
       </div>
     </div>
 
-    <div class="card">
-      <div class="row between" style="margin-bottom:10px">
-        <p class="sec-title" style="margin:0">المبالغ</p>
-        <span class="badge ${py[1]}">${py[0]}</span>
-      </div>
-      <div class="money">
-        <div><span class="muted">المتفق عليه</span><b>${money(b.agreed_total)}</b></div>
-        <div><span class="muted">المدفوع</span><b style="color:var(--green)">${money(b.paid)}</b></div>
-        <div><span class="muted">المتبقي</span><b style="color:${Number(b.remaining) > 0 ? 'var(--red)' : 'var(--green)'}">${money(b.remaining)}</b></div>
-      </div>
-      ${discount > 0 ? `<div class="muted" style="margin-top:8px">السعر المتوقع ${money(b.expected_total)} — خصم ${money(discount)}</div>` : ''}
-    </div>
-
-    <div class="card">
-      <p class="sec-title">الدفعات</p>
-      ${payRows}
-      <form id="payForm" style="margin-top:12px">
-        <div class="grid2">
-          <div><label>المبلغ</label><input id="pAmount" inputmode="numeric" class="ltr"></div>
-          <div><label>التاريخ</label><input type="date" id="pDate" value="${todayStr()}"></div>
-        </div>
-        <div class="grid2">
-          <div><label>الطريقة</label><select id="pMethod"><option value="cash">نقد</option><option value="transfer">تحويل</option></select></div>
-          <div><label>ملاحظة</label><input id="pNote"></div>
-        </div>
-        <div class="grid2" style="margin-top:12px">
-          ${Number(b.remaining) > 0 ? `<button type="button" class="btn" id="fillRemaining">سداد المتبقي</button>` : '<span></span>'}
-          <button class="btn primary">＋ إضافة دفعة</button>
-        </div>
-      </form>
-    </div>
-
-    <div class="card">
-      <p class="sec-title">التأمين — ${money(b.deposit_amount)}</p>
-      <label>الحالة</label>
-      <select id="dStatus">
-        ${Object.entries(DEP).map(([k,l]) => `<option value="${k}" ${b.deposit_status === k ? 'selected' : ''}>${l}</option>`).join('')}
-      </select>
-      <div id="dDeduct" ${b.deposit_status === 'deducted' ? '' : 'hidden'}>
-        <div class="grid2">
-          <div><label>المبلغ المخصوم</label><input id="dAmount" inputmode="numeric" class="ltr" value="${b.deposit_deducted || ''}"></div>
-          <div><label>سبب الخصم</label><input id="dReason" value="${esc(b.deduction_reason)}"></div>
-        </div>
-      </div>
-      <button class="btn block" style="margin-top:12px" id="dSave">حفظ حالة التأمين</button>
-    </div>
+    ${steps}
+    ${depCard}
 
     ${b.notes ? `<div class="card"><p class="sec-title">ملاحظات</p><div style="white-space:pre-wrap">${esc(b.notes)}</div></div>` : ''}
 
-    <div class="actions">${actions}</div>
+    ${!cancelled ? `<button class="btn danger block" data-status="cancelled" data-msg="إلغاء الحجز؟ ستصبح أيامه متاحة لحجز آخر">إلغاء الحجز</button>` : ''}
   `;
   bindCard(b);
 }
 
 function bindCard(b){
-  // إضافة دفعة
-  const fill = $('#fillRemaining');
-  if (fill) fill.onclick = () => { $('#pAmount').value = Number(b.remaining); };
-
-  $('#payForm').onsubmit = async e => {
+  /* ---- تسجيل دفعة ---- */
+  const pf = $('#payForm');
+  if (pf) pf.onsubmit = async e => {
     e.preventDefault();
     const amount = num($('#pAmount').value);
     if (amount <= 0) return toast('اكتب مبلغ الدفعة', true);
+    const btn = pf.querySelector('button'); btn.disabled = true;
     const { error } = await sb.from('payments').insert({
-      booking_id: b.id, amount, paid_on: $('#pDate').value || todayStr(),
-      method: $('#pMethod').value, note: $('#pNote').value.trim()
+      booking_id: b.id, amount, paid_on: $('#pDate').value || todayStr(), method: $('#pMethod').value
     });
+    btn.disabled = false;
     if (error) return toast('خطأ: ' + error.message, true);
-    await loadAll(); toast('تمت إضافة الدفعة ✅'); openCard(b.id);
+    refreshCard(b.id, 'تم تسجيل الدفعة ✅');
   };
 
-  // حذف دفعة
+  /* ---- حذف دفعة ---- */
   $('#vCard').querySelectorAll('[data-del-pay]').forEach(btn => btn.onclick = async () => {
     if (!confirm('حذف هذه الدفعة؟')) return;
     const { error } = await sb.from('payments').delete().eq('id', Number(btn.dataset.delPay));
     if (error) return toast('خطأ: ' + error.message, true);
-    await loadAll(); toast('تم حذف الدفعة'); openCard(b.id);
+    refreshCard(b.id, 'تم حذف الدفعة');
   });
 
-  // التأمين
+  /* ---- التأمين: إضافة / إزالة / تعديل ---- */
+  const hadDep = Number(b.deposit_amount) > 0;
+  $('#dHas').onchange = async () => {
+    const on = $('#dHas').checked;
+    if (on){ $('#dBody').hidden = false; $('#dTotal').focus(); return; }   // يُحفظ عند الضغط على "حفظ التأمين"
+    if (!hadDep){ $('#dBody').hidden = true; return; }
+    if (!confirm('إزالة التأمين من هذا الحجز؟')){ $('#dHas').checked = true; return; }
+    const { error } = await sb.from('bookings').update({
+      deposit_amount:0, deposit_status:'not_collected', deposit_deducted:0, deduction_reason:''
+    }).eq('id', b.id);
+    if (error){ $('#dHas').checked = true; return toast('خطأ: ' + error.message, true); }
+    refreshCard(b.id, 'تمت إزالة التأمين');
+  };
+
   $('#dStatus').onchange = () => { $('#dDeduct').hidden = $('#dStatus').value !== 'deducted'; };
+
   $('#dSave').onclick = async () => {
+    const total  = num($('#dTotal').value);
     const status = $('#dStatus').value;
+    if (total <= 0) return toast('اكتب مبلغ التأمين', true);
     const rec = {
+      deposit_amount: total,
       deposit_status: status,
       deposit_deducted: status === 'deducted' ? num($('#dAmount').value) : 0,
       deduction_reason: status === 'deducted' ? $('#dReason').value.trim() : ''
     };
-    if (status === 'deducted' && rec.deposit_deducted > Number(b.deposit_amount))
-      return toast('المبلغ المخصوم أكبر من التأمين', true);
+    if (rec.deposit_deducted > total) return toast('المبلغ المخصوم أكبر من التأمين', true);
     const { error } = await sb.from('bookings').update(rec).eq('id', b.id);
     if (error) return toast('خطأ: ' + error.message, true);
-    await loadAll(); toast('تم حفظ حالة التأمين ✅'); openCard(b.id);
+    refreshCard(b.id, hadDep ? 'تم حفظ التأمين ✅' : 'تمت إضافة التأمين ✅');
   };
 
-  // تغيير حالة الحجز
+  /* ---- تغيير الحالة: تأكيد / إنهاء / إلغاء / استرجاع / إعادة فتح ---- */
   $('#vCard').querySelectorAll('[data-status]').forEach(btn => btn.onclick = async () => {
     const ns = btn.dataset.status;
-    const msg = { confirmed:'تأكيد الحجز؟', completed:'تسجيل انتهاء الحجز؟', cancelled:'إلغاء الحجز؟ ستصبح أيامه متاحة لحجز آخر', tentative:'استرجاع الحجز كمبدئي؟' }[ns];
-    if (!confirm(msg)) return;
+    if (!confirm(btn.dataset.msg)) return;
+    btn.disabled = true;
     const { error } = await sb.from('bookings').update({ status: ns }).eq('id', b.id);
+    btn.disabled = false;
     if (error){
       if (error.code === '23P01') return toast('لا يمكن الاسترجاع: الأيام حُجزت لحجز آخر', true);
       return toast('خطأ: ' + error.message, true);
     }
-    await loadAll();
-    toast(ns === 'confirmed' ? 'تم تأكيد الحجز ✅' : 'تم التحديث ✅');
-    openCard(b.id);
+    const msg = { confirmed:'تم تأكيد الحجز ✅', completed:'تم إنهاء الطلب 🏁', cancelled:'تم إلغاء الحجز', tentative:'تم استرجاع الحجز' }[ns];
+    refreshCard(b.id, msg);
   });
 
-  // تعديل
+  /* ---- تعديل وحذف ---- */
   $('#editBtn').onclick = () => openForm(b.id);
 
-  // حذف نهائي
   $('#delBtn').onclick = async () => {
     if (!confirm(`حذف حجز ${b.renter_name} نهائياً مع كل دفعاته؟\nلا يمكن التراجع.`)) return;
     const { error } = await sb.from('bookings').delete().eq('id', b.id);
